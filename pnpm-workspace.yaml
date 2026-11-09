@@ -1,0 +1,5 @@
+# Neither package needs its install script: esbuild ships prebuilt binaries
+# and scarf only sends telemetry.
+allowBuilds:
+  esbuild: false
+  '@scarf/scarf': false
