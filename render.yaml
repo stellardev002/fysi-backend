@@ -51,7 +51,7 @@ services:
         value: '60'
       - key: STELLAR_NETWORK
         value: testnet
-      # Testnet USDC (Circle). Mainnet USDC has a different issuer.
+      # Testnet only: Circle's testnet USDC. Mainnet values are refused at boot.
       - key: STELLAR_ASSETS
         value: USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5
       # Supabase Storage over S3 (docs/DEPLOYMENT.md). Keys are server-only secrets.

@@ -16,9 +16,6 @@ import { StellarController } from './stellar.controller.js';
       useFactory: (config: ConfigService<EnvVars, true>) =>
         new StellarConfig({
           STELLAR_NETWORK: config.get('STELLAR_NETWORK', { infer: true }),
-          STELLAR_ALLOW_MAINNET: config.get('STELLAR_ALLOW_MAINNET', {
-            infer: true,
-          }),
           STELLAR_HORIZON_URL: config.get('STELLAR_HORIZON_URL', {
             infer: true,
           }),

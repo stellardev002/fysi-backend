@@ -27,9 +27,9 @@ export abstract class CustodyProvider {
 }
 
 /**
- * Testnet only: keys generated here and stored encrypted (AES-256-GCM, bound to
- * the public key) in the wallets table. Refused on mainnet at boot, because the
- * PRD requires keys never to sit in the app database.
+ * Keys generated here and stored encrypted (AES-256-GCM, bound to the public
+ * key) in the wallets table. Fine for the testnet-only build; before real money
+ * the PRD requires an MPC provider, since keys must never sit in the app database.
  */
 export class LocalCustodyProvider extends CustodyProvider {
   readonly name = 'local';

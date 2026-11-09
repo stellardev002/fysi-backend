@@ -3,9 +3,8 @@
 //
 //   pnpm platform:setup
 //
-// On testnet it is funded by Friendbot. On mainnet, fund the printed address
-// with XLM first (reserves for every custodial wallet plus fees), then run this
-// again. Idempotent: safe to run on every deploy.
+// Testnet only: it is funded with Friendbot's test XLM. Idempotent: safe to run
+// on every deploy.
 process.env.WATCHER_INTERVAL_MS = '0';
 process.env.SWEEP_INTERVAL_SECONDS = '0';
 process.env.LOG_LEVEL ??= 'warn';

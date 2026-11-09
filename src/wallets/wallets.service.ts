@@ -102,7 +102,7 @@ export class WalletsService {
   }
 
   /**
-   * Creates and funds the settlement account (Friendbot on testnet) and adds
+   * Creates the settlement account, funds it with Friendbot's test XLM and adds
    * the USDC trustline. Idempotent: `pnpm platform:setup` and tests call it.
    */
   async setupSettlement(): Promise<WalletRow> {
@@ -120,10 +120,6 @@ export class WalletsService {
     }
     let account = await this.ledger.loadAccount(w.publicKey);
     if (!account) {
-      if (!this.stellar.isTestnet)
-        throw new Error(
-          `Fund the settlement account ${w.publicKey} with XLM, then run this again`,
-        );
       await this.ledger.fundWithFriendbot(w.publicKey);
       account = await this.ledger.loadAccount(w.publicKey);
       if (!account) throw new Error('Friendbot did not fund the settlement account');

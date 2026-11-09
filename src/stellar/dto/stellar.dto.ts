@@ -24,7 +24,7 @@ export class AssetDto {
 }
 
 export class NetworkInfoDto {
-  @ApiProperty({ enum: ['testnet', 'mainnet'], example: 'testnet' })
+  @ApiProperty({ enum: ['testnet'], example: 'testnet', description: 'Always testnet for now.' })
   network: string;
 
   @ApiProperty({

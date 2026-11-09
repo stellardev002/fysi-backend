@@ -17,7 +17,7 @@ import {
 } from './ledger.js';
 import { KeypairSigner, UnconfiguredSigner } from './signer.js';
 import { StellarAccountsService } from './stellar-accounts.service.js';
-import { StellarConfig } from './stellar.config.js';
+import { MAINNET_USDC_ISSUER, StellarConfig } from './stellar.config.js';
 
 const issuer = Keypair.random().publicKey();
 const holder = Keypair.random().publicKey();
@@ -26,7 +26,6 @@ const env = (
   over: Partial<ConstructorParameters<typeof StellarConfig>[0]> = {},
 ) => ({
   STELLAR_NETWORK: StellarNetwork.Testnet,
-  STELLAR_ALLOW_MAINNET: false,
   STELLAR_HORIZON_URL: '',
   STELLAR_ASSETS: 'XLM',
   ...over,
@@ -123,18 +122,19 @@ describe('StellarConfig', () => {
     );
   });
 
-  it('refuses mainnet without the explicit switch', () => {
+  it('runs on testnet only and refuses every way to reach mainnet', () => {
+    const c = new StellarConfig(env());
+    expect(c.networkPassphrase).toBe(Networks.TESTNET);
+    expect(c.networkPassphrase).not.toBe(Networks.PUBLIC);
     expect(
-      () => new StellarConfig(env({ STELLAR_NETWORK: StellarNetwork.Mainnet })),
-    ).toThrow(/STELLAR_ALLOW_MAINNET/);
-    const c = new StellarConfig(
-      env({
-        STELLAR_NETWORK: StellarNetwork.Mainnet,
-        STELLAR_ALLOW_MAINNET: true,
-      }),
-    );
-    expect(c.networkPassphrase).toBe(Networks.PUBLIC);
-    expect(c.horizonUrl).toBe('https://horizon.stellar.org');
+      () => new StellarConfig(env({ STELLAR_NETWORK: 'mainnet' as StellarNetwork })),
+    ).toThrow(/testnet only/);
+    expect(
+      () => new StellarConfig(env({ STELLAR_HORIZON_URL: 'https://horizon.stellar.org/' })),
+    ).toThrow(/public network/);
+    expect(
+      () => new StellarConfig(env({ STELLAR_ASSETS: `USDC:${MAINNET_USDC_ISSUER}` })),
+    ).toThrow(/mainnet USDC issuer/);
   });
 
   it('honours a custom Horizon URL', () => {

@@ -2,6 +2,8 @@
 
 API for **Fysi**, a marketplace for certified eco-friendly products with payments settled in USDC on Stellar. Verified vendors sign up and sell; customers browse and keep a cart without an account, then sign up to buy; admins verify vendors and moderate the catalogue.
 
+**Runs on the Stellar testnet only**: no real money moves, and the app refuses to start with any mainnet setting.
+
 NestJS 12 (Express) + TypeScript, Supabase Postgres via Drizzle, Upstash Redis, Supabase Storage over S3, Resend, the official Stellar SDK. Deployed on Render. The platform layer (config, auth sessions, rate limits, audit log, errors, storage, Stellar helpers) comes from the ChuckSales backend; the marketplace is new.
 
 | Doc | For |
@@ -18,7 +20,7 @@ NestJS 12 (Express) + TypeScript, Supabase Postgres via Drizzle, Upstash Redis, 
 | --- | --- | --- |
 | 1. Foundation | Auth (customers, vendors, admins, super admins; TOTP 2FA required for vendors and admins; admin idle timeout), vendor onboarding wizard with KYB documents, admin verification queue, product listings with photos and certifications, public catalogue with search and filters, store pages, guest cart pricing and merge at sign-up, product moderation, US dollar prices (1:1 with USDC) | **Done** |
 | 2. Wallets and payments (testnet) | Custody provider interface (encrypted local keys on testnet), sponsored custodial wallets for vendors (on approval) and customers (opt-in, PIN), settlement account, checkout with stock hold and multi-vendor split, four payment methods (external wallet, Fysi wallet, SEP-7 QR, payment link), payment watcher with replay, under/overpaid and unmatched handling, escrow with commission, confirm delivery, problem reports, automatic release, payouts, vendor withdrawals (password + email code, daily limit), admin refunds, transaction monitor, dashboard, order emails | **Done** |
-| 3. Pilot | Security review, legal sign-off, SEP-24 NGN anchor, mainnet | Later |
+| 3. Pilot | Security review, legal sign-off, SEP-24 NGN anchor, MPC custody | Later (mainnet is not part of this build) |
 
 PRD requirements covered: V1–V9 (V6 bank cash-out waits for the NGN anchor), C1–C9 (C9 funding by deposit address and QR; anchor deposits at the pilot), A1–A7.
 

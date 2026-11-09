@@ -502,7 +502,8 @@ export class OrdersService {
         asset,
         memo: order.number,
         message: `Fysi order ${order.number}`,
-        networkPassphrase: this.stellar.isTestnet ? this.stellar.networkPassphrase : undefined,
+        // Testnet: wallets need the passphrase, or they would assume the public network.
+        networkPassphrase: this.stellar.networkPassphrase,
       }),
       payLink: `${this.siteUrl}/pay/${this.payLinkToken(order.number)}`,
       expiresAt: order.expiresAt,

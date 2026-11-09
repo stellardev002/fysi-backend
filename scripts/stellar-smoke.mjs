@@ -22,7 +22,6 @@ import { fromStroops, toStroops } from '../dist/stellar/amounts.js';
 
 const config = new StellarConfig({
   STELLAR_NETWORK: StellarNetwork.Testnet,
-  STELLAR_ALLOW_MAINNET: false,
   STELLAR_HORIZON_URL: process.env.STELLAR_HORIZON_URL ?? '',
   STELLAR_ASSETS: 'XLM',
 });

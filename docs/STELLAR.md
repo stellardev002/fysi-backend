@@ -1,5 +1,7 @@
 # Payments on Stellar
 
+> **Testnet only.** No real money moves. There is no mainnet setting: `STELLAR_NETWORK` accepts only `testnet`, and the app refuses to boot with a public-network Horizon URL or Circle's mainnet USDC issuer.
+
 Every Fysi order is paid in **USDC on Stellar** into the Fysi settlement account, matched to the order by its memo, held in escrow, then paid to the vendor's custodial wallet minus commission (PRD "Payments on Stellar"). Prices are US dollars and USDC is 1:1, so there is no exchange rate or quote risk.
 
 ## Accounts
@@ -19,7 +21,7 @@ Custodial accounts are opened with **sponsored reserves** (the settlement accoun
 
 | `WALLET_PROVIDER` | Where keys live | Network |
 | --- | --- | --- |
-| `local` | Encrypted with `DATA_ENCRYPTION_KEY` (AES-256-GCM, bound to the public key) in the `wallets` table | **Testnet only**: the app refuses to boot with it on mainnet |
+| `local` | Encrypted with `DATA_ENCRYPTION_KEY` (AES-256-GCM, bound to the public key) in the `wallets` table | Testnet (this build) |
 | (pilot) DFNS or another MPC provider | The provider | Implement `CustodyProvider`; nothing else changes |
 
 ## Payment methods (PRD C6)
@@ -30,7 +32,7 @@ All four pay the settlement account in USDC with the order number (e.g. `FYK3M9Q
 | --- | --- |
 | Connect external wallet | `POST /orders/{id}/pay/external` builds the payment (amount due, USDC, memo) from the customer's address → the wallet signs → `/pay/external/submit` checks it pays the right account, asset and memo, and submits |
 | Fysi wallet | `POST /orders/{id}/pay/wallet` with the PIN: Fysi signs from the customer wallet, fee-bumped. Refused with a "fund your wallet" prompt when the balance is short. 5 wrong PINs lock it for 15 minutes |
-| QR code | `payment.sep7Uri` is a SEP-7 `web+stellar:pay` request (destination, amount, USDC, memo; testnet adds the network passphrase). Any SEP-7 wallet pre-fills it |
+| QR code | `payment.sep7Uri` is a SEP-7 `web+stellar:pay` request (destination, amount, USDC, memo, and the testnet passphrase so wallets do not assume mainnet). Any SEP-7 wallet pre-fills it |
 | Payment link | `payment.payLink` opens the hosted pay page; `GET /pay/{token}` serves it without an account or personal data, so the link can be sent to someone else |
 
 ## Payment watcher
@@ -66,7 +68,7 @@ Payouts, refunds and withdrawals share one lifecycle (`src/payments/transfers.se
 
 | Variable | Default | Notes |
 | --- | --- | --- |
-| `STELLAR_NETWORK` | `testnet` | `mainnet` also needs `STELLAR_ALLOW_MAINNET=true`, and a real custody provider |
+| `STELLAR_NETWORK` | `testnet` | The only accepted value |
 | `STELLAR_ASSETS` | — | `USDC:<issuer>`. Testnet: `GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5` (Circle) |
 | `WALLET_PROVIDER` | `local` | See Custody |
 | `PAYMENT_WINDOW_MINUTES` | 15 | Stock hold, QR and link validity |

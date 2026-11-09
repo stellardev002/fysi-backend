@@ -58,6 +58,13 @@ describe('validateEnv', () => {
     expect(validateEnv({ ...base, MFA_REQUIRED_ROLES: '' }).MFA_REQUIRED_ROLES).toBe('');
   });
 
+  it('accepts only the Stellar testnet', () => {
+    expect(validateEnv(base).STELLAR_NETWORK).toBe('testnet');
+    expect(() => validateEnv({ ...base, STELLAR_NETWORK: 'mainnet' })).toThrow(
+      /STELLAR_NETWORK must be testnet/,
+    );
+  });
+
   it('rejects a missing database URL and a short JWT secret', () => {
     expect(() =>
       validateEnv({

@@ -110,5 +110,5 @@ Then send the frontend developer the base URL, the Swagger link and three files:
 - [ ] `FRONTEND_URL` / `CORS_ORIGINS` list only the real frontend domains.
 - [ ] Decide whether Swagger stays public (`SWAGGER_ENABLED`).
 - [ ] `STELLAR_PLATFORM_SECRET` set from a dedicated, unfunded-beyond-reserve account.
-- [ ] Mainnet only after PRD sign-off: `STELLAR_NETWORK=mainnet`, `STELLAR_ALLOW_MAINNET=true`, mainnet asset issuers in `STELLAR_ASSETS`.
+- [ ] Testnet only: `STELLAR_NETWORK=testnet` with Circle's testnet USDC issuer. Mainnet is not supported by this build; moving to it is a code change after the security review and legal sign-off.
 - [ ] Supabase plan with backups you have checked, and a `pg_dump` taken.

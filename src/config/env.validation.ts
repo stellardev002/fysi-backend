@@ -30,9 +30,9 @@ export enum LogLevel {
   Silent = 'silent',
 }
 
+/** Testnet only for now: there is deliberately no mainnet value. */
 export enum StellarNetwork {
   Testnet = 'testnet',
-  Mainnet = 'mainnet',
 }
 
 const toBoolean = ({ value }: { value: unknown }) =>
@@ -178,15 +178,12 @@ export class EnvVars {
   })
   FRONTEND_URL = '';
 
-  @IsEnum(StellarNetwork)
+  @IsEnum(StellarNetwork, {
+    message: 'STELLAR_NETWORK must be testnet: Fysi runs on the Stellar testnet only',
+  })
   STELLAR_NETWORK: StellarNetwork = StellarNetwork.Testnet;
 
-  /** Must be true for STELLAR_NETWORK=mainnet: real money needs a deliberate switch. */
-  @Transform(toBoolean)
-  @IsBoolean()
-  STELLAR_ALLOW_MAINNET = false;
-
-  /** Empty uses SDF's public Horizon for the chosen network. */
+  /** Empty uses SDF's testnet Horizon. A public-network Horizon is refused at boot. */
   @IsString()
   @Matches(/^(https?:\/\/\S+)?$/, {
     message: 'STELLAR_HORIZON_URL must be empty or an https:// URL',
@@ -237,8 +234,8 @@ export class EnvVars {
 
   /**
    * Who holds custodial keys. `local`: keys encrypted with DATA_ENCRYPTION_KEY
-   * in this database, testnet only (refused on mainnet). An MPC provider such
-   * as DFNS plugs in behind the same interface for the pilot.
+   * in this database (fine on testnet, where nothing has real value). An MPC
+   * provider such as DFNS plugs in behind the same interface later.
    */
   @IsIn(['local'])
   WALLET_PROVIDER = 'local';
