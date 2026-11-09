@@ -1,7 +1,8 @@
 import { Keypair } from '@stellar/stellar-sdk';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
-import { createTestApp, fakeChain, freshIp } from './helpers.js';
+import { chain } from './fake-chain.js';
+import { createTestApp, freshIp } from './helpers.js';
 
 const USDC = 'USDC:GDVEU3DD4KOFECV66VIHWEZOYX4ZKR3WV27L464SIIPOU2IUI3JCZA57';
 
@@ -39,11 +40,7 @@ describe('Stellar endpoints and API shape (e2e)', () => {
 
   it('looks up an account: balances, trustlines and unfunded addresses', async () => {
     const funded = Keypair.random().publicKey();
-    fakeChain.set(funded, {
-      address: funded,
-      sequence: '1',
-      balances: [{ assetId: 'XLM', balance: '100.0000000', limit: null }],
-    });
+    chain.accounts.set(funded, { sequence: 1n, lines: new Map([['XLM', 1_000_000_000n]]) });
     const res = await http()
       .get(`/api/v1/stellar/accounts/${funded}`)
       .set('X-Forwarded-For', freshIp())

@@ -40,7 +40,7 @@ On Render this happens automatically: the container runs `node dist/database/mig
 
 | Migration | What it does |
 | --- | --- |
-| `0000_init` | Users (roles customer, vendor, admin, super admin; phone; encrypted TOTP secret), OTP codes, refresh tokens (with the 2FA flag), suspensions, audit log, categories, vendors (business, KYB, encrypted director NIN/BVN, verification status), vendor documents, products (prices in US cents, stock, certifications, moderation, generated full-text search vector), product images, cart items; RLS on every table |
+| `0000_init` | Users (roles customer, vendor, admin, super admin; phone; encrypted TOTP secret), OTP codes, refresh tokens (with the 2FA flag), suspensions, audit log, categories, vendors (business, KYB, encrypted director NIN/BVN, verification status), vendor documents, products (prices in US cents, stock, certifications, moderation, generated full-text search vector), product images, cart items; wallets (custodial and settlement, custody handle, KYC tier, PIN hash), orders, vendor orders (fulfilment and escrow status, commission), order lines, payments (one row per ledger operation, unique), payouts, refunds, withdrawals, the watcher cursor; RLS on every table |
 | `0001_hardening_and_seed` | Append-only trigger on the audit log, Supabase browser-role lockdown, the six launch categories |
 
 ## Security model: why RLS is on everywhere

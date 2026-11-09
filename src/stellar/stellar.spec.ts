@@ -193,6 +193,12 @@ class FakeLedger extends StellarLedger {
   findTransaction() {
     return Promise.resolve({ found: false as const });
   }
+  paymentsFor() {
+    return Promise.resolve({ records: [], cursor: null });
+  }
+  fundWithFriendbot() {
+    return Promise.resolve();
+  }
 }
 
 describe('StellarAccountsService', () => {

@@ -2,6 +2,7 @@ import { plainToInstance, Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
   IsEnum,
+  IsIn,
   IsInt,
   IsNotEmpty,
   IsNumber,
@@ -233,6 +234,76 @@ export class EnvVars {
   @IsInt()
   @Min(5)
   ADMIN_SESSION_IDLE_MINUTES = 60;
+
+  /**
+   * Who holds custodial keys. `local`: keys encrypted with DATA_ENCRYPTION_KEY
+   * in this database, testnet only (refused on mainnet). An MPC provider such
+   * as DFNS plugs in behind the same interface for the pilot.
+   */
+  @IsIn(['local'])
+  WALLET_PROVIDER = 'local';
+
+  /** Minutes a checkout holds stock and its QR code and link stay valid (PRD: 15). */
+  @Type(() => Number)
+  @IsInt()
+  @Min(5)
+  @Max(120)
+  PAYMENT_WINDOW_MINUTES = 15;
+
+  /** Hours a partly paid order stays open for the balance before it expires and is refunded. */
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  PARTIAL_PAYMENT_GRACE_HOURS = 24;
+
+  /** Platform commission in basis points (PRD: 5% = 500). */
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(5000)
+  COMMISSION_BPS = 500;
+
+  /** Days after approval that founding vendors pay no commission (PRD: 3 months). */
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  FOUNDING_VENDOR_FREE_DAYS = 90;
+
+  /** Escrow releases this many days after Shipped if the customer does nothing (PRD: 7). */
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  ESCROW_AUTO_RELEASE_DAYS = 7;
+
+  /** Days after delivery a customer can report a problem (PRD: 7). */
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  PROBLEM_REPORT_DAYS = 7;
+
+  /** Milliseconds between payment-watcher polls of the settlement account. 0 turns it off. */
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  WATCHER_INTERVAL_MS = 3000;
+
+  /** Seconds between sweeps (expire orders, release escrow, retry wallets and transfers). 0 turns it off. */
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  SWEEP_INTERVAL_SECONDS = 30;
+
+  /** Most a vendor can withdraw per rolling 24 hours, in US cents. */
+  @Type(() => Number)
+  @IsInt()
+  @Min(100)
+  WITHDRAWAL_DAILY_LIMIT_CENTS = 100_000;
+
+  /** KYC Tier 1 customer wallet balance cap, in US cents (PRD: ₦300,000 ≈ $200). */
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  CUSTOMER_TIER1_CAP_CENTS = 20_000;
 
   /** Number of reverse proxies in front of the app (Render = 1). */
   @Type(() => Number)

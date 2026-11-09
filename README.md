@@ -17,10 +17,10 @@ NestJS 12 (Express) + TypeScript, Supabase Postgres via Drizzle, Upstash Redis, 
 | Step | Scope | Status |
 | --- | --- | --- |
 | 1. Foundation | Auth (customers, vendors, admins, super admins; TOTP 2FA required for vendors and admins; admin idle timeout), vendor onboarding wizard with KYB documents, admin verification queue, product listings with photos and certifications, public catalogue with search and filters, store pages, guest cart pricing and merge at sign-up, product moderation, US dollar prices (1:1 with USDC) | **Done** |
-| 2. Wallets and payments (testnet) | Custodial wallet service, external wallet connect, QR and payment links, payment watcher, escrow and payouts, transaction monitor | Next |
+| 2. Wallets and payments (testnet) | Custody provider interface (encrypted local keys on testnet), sponsored custodial wallets for vendors (on approval) and customers (opt-in, PIN), settlement account, checkout with stock hold and multi-vendor split, four payment methods (external wallet, Fysi wallet, SEP-7 QR, payment link), payment watcher with replay, under/overpaid and unmatched handling, escrow with commission, confirm delivery, problem reports, automatic release, payouts, vendor withdrawals (password + email code, daily limit), admin refunds, transaction monitor, dashboard, order emails | **Done** |
 | 3. Pilot | Security review, legal sign-off, SEP-24 NGN anchor, mainnet | Later |
 
-PRD requirements covered in step 1: V1–V3, V7 (V4–V6, V8–V9 need payments); C1–C5 (C5 delivery address arrives with checkout); A1, A3, A5–A7 (A2 and A4 report on payments).
+PRD requirements covered: V1–V9 (V6 bank cash-out waits for the NGN anchor), C1–C9 (C9 funding by deposit address and QR; anchor deposits at the pilot), A1–A7.
 
 ## Local development
 
@@ -28,6 +28,7 @@ PRD requirements covered in step 1: V1–V3, V7 (V4–V6, V8–V9 need payments)
 cp .env.example .env        # fill DATABASE_URL, REDIS_URL, JWT_ACCESS_SECRET, DATA_ENCRYPTION_KEY, FRONTEND_URL
 pnpm install
 pnpm build && pnpm db:migrate
+pnpm platform:setup        # opens the settlement account (testnet: Friendbot + USDC trustline)
 ADMIN_PASSWORD='at-least-12-characters' pnpm admin:create --email you@fysi.ng --name "Your Name"
 pnpm start:dev
 ```
@@ -58,6 +59,7 @@ DATABASE_URL=postgres://postgres:postgres@localhost:55432/test REDIS_URL=redis:/
 | `pnpm db:generate` | generate a SQL migration after editing `src/database/schema/` |
 | `pnpm db:migrate` | apply migrations from `./drizzle` (needs a prior `pnpm build`) |
 | `pnpm admin:create` | create the first super admin straight in the database |
+| `pnpm platform:setup` | open the settlement account (idempotent) |
 | `pnpm mail:test you@example.com` | send one of every email through Resend to check the design |
 | `pnpm docs:openapi` | save the running API's OpenAPI spec to `docs/openapi.json` |
 

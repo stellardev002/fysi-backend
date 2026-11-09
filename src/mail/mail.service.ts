@@ -168,6 +168,94 @@ export class MailService {
     });
   }
 
+  /** PRD C7: order confirmation with the transaction hash. */
+  sendOrderConfirmation(
+    to: string,
+    o: { number: string; totalUsd: string; lines: string[]; txHash: string; explorerUrl: string },
+  ): Promise<void> {
+    return this.send(to, {
+      subject: `Fysi: order ${o.number} is paid`,
+      preheader: `We received $${o.totalUsd} in USDC for order ${o.number}.`,
+      heading: `Order ${o.number} is confirmed`,
+      status: { label: 'Paid', tone: 'success' },
+      paragraphs: [
+        `We received your payment of $${o.totalUsd} (USDC on Stellar). Your vendors have been told and will ship soon.`,
+        o.lines.join('\n'),
+      ],
+      quote: { label: 'Transaction hash', text: `${o.txHash}\n${o.explorerUrl}` },
+      button: this.siteButton('Track your order', `/account/orders`),
+      after: [
+        'Your money is held safely until you confirm delivery, or 7 days after shipping.',
+      ],
+      footnote: 'You are receiving this because you placed an order on Fysi.',
+    });
+  }
+
+  /** PRD V9: email on each paid order. */
+  sendVendorNewOrder(
+    to: string,
+    o: { number: string; payoutUsd: string; lines: string[] },
+  ): Promise<void> {
+    return this.send(to, {
+      subject: `Fysi: new paid order ${o.number}`,
+      preheader: `You have a new paid order. $${o.payoutUsd} is waiting for you in escrow.`,
+      heading: `New order ${o.number}`,
+      status: { label: 'Paid', tone: 'success' },
+      paragraphs: [
+        'A customer paid for the items below. Pack them, ship them and add the tracking number in your dashboard.',
+        o.lines.join('\n'),
+        `$${o.payoutUsd} (after commission) shows as pending in your wallet and is released when the customer confirms delivery, or 7 days after you mark it shipped.`,
+      ],
+      button: this.siteButton('Open the order', '/vendor/orders'),
+      footnote: VENDOR_FOOTNOTE,
+    });
+  }
+
+  sendOrderShipped(
+    to: string,
+    o: { number: string; vendorName: string; carrier: string | null; trackingNumber: string },
+  ): Promise<void> {
+    return this.send(to, {
+      subject: `Fysi: ${o.vendorName} shipped part of order ${o.number}`,
+      preheader: `Tracking number ${o.trackingNumber}.`,
+      heading: 'Your items are on the way',
+      status: { label: 'Shipped', tone: 'brand' },
+      paragraphs: [`${o.vendorName} shipped your items from order ${o.number}.`],
+      quote: {
+        label: 'Tracking',
+        text: o.carrier ? `${o.carrier}: ${o.trackingNumber}` : o.trackingNumber,
+      },
+      button: this.siteButton('Track your order', '/account/orders'),
+      after: ['When everything arrives, tap "Confirm delivery" so the vendor gets paid.'],
+      footnote: 'You are receiving this because you placed an order on Fysi.',
+    });
+  }
+
+  sendWithdrawalCode(
+    to: string,
+    code: string,
+    ttlMinutes: number,
+    w: { amountUsd: string; destination: string },
+  ): Promise<void> {
+    return this.send(to, {
+      subject: 'Confirm your Fysi withdrawal',
+      preheader: `Your code is ${code}. Withdrawal of $${w.amountUsd}.`,
+      heading: 'Confirm your withdrawal',
+      status: { label: 'Action needed', tone: 'warning' },
+      paragraphs: [
+        `Enter this code with your password to send ${w.amountUsd} USDC to ${w.destination}.`,
+      ],
+      code,
+      after: [`The code expires in ${ttlMinutes} minutes.`],
+      footnote:
+        'If you did not ask for this withdrawal, change your password now and contact Fysi support: someone may know it.',
+    });
+  }
+
+  private siteButton(label: string, path: string) {
+    return this.brand.siteUrl ? { label, url: `${this.brand.siteUrl}${path}` } : undefined;
+  }
+
   private dashboardButton() {
     return this.brand.siteUrl
       ? { label: 'Open Fysi', url: this.brand.siteUrl }

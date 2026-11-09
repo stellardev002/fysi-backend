@@ -20,6 +20,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --env-file-if-exists=.env dist/database/migrate.js",
     "admin:create": "pnpm build && node --env-file-if-exists=.env scripts/create-admin.mjs",
+    "platform:setup": "pnpm build && node --env-file-if-exists=.env scripts/platform-setup.mjs",
     "smoke:stellar": "pnpm build && node scripts/stellar-smoke.mjs",
     "audit:deps": "pnpm audit --prod --audit-level high",
     "mail:test": "pnpm build && node --env-file-if-exists=.env scripts/mail-test.mjs",

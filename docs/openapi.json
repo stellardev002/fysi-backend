@@ -10892,6 +10892,4484 @@
         ]
       }
     },
+    "/api/v1/admin/dashboard": {
+      "get": {
+        "description": "PRD A2: new vendors, new customers, paid orders, payment volume and failed (unmatched) payments per day or week, plus the queues waiting for an admin.",
+        "operationId": "AdminPaymentsController_dashboard_v1",
+        "parameters": [
+          {
+            "name": "period",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "day",
+              "type": "string",
+              "enum": [
+                "day",
+                "week"
+              ]
+            }
+          },
+          {
+            "name": "days",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 366,
+              "default": 30,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Dashboard retrieved"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/DashboardDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 400,
+                    "message": "Validation failed",
+                    "data": null,
+                    "error": {
+                      "code": "BAD_REQUEST",
+                      "details": [
+                        "email must be an email"
+                      ],
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/dashboard"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "data": null,
+                    "error": {
+                      "code": "UNAUTHORIZED",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/dashboard"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden",
+                    "data": null,
+                    "error": {
+                      "code": "FORBIDDEN",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/dashboard"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Dashboard",
+        "tags": [
+          "Admin Payments"
+        ]
+      }
+    },
+    "/api/v1/admin/payments": {
+      "get": {
+        "description": "PRD A4: every payment into the settlement account with order, payer, amount, status and explorer link. `needsRefund=true` lists flagged payments (unmatched, overpaid, or for orders that expired part-paid).",
+        "operationId": "AdminPaymentsController_payments_v1",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size.",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "offset",
+            "required": false,
+            "in": "query",
+            "description": "Items to skip: (page - 1) * limit.",
+            "schema": {
+              "minimum": 0,
+              "default": 0,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "matched",
+                "overpaid",
+                "unmatched",
+                "refunded"
+              ]
+            }
+          },
+          {
+            "name": "needsRefund",
+            "required": false,
+            "in": "query",
+            "description": "`true`: only payments with money to send back (PRD A4: flagged).",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Transaction hash, payer address or memo.",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Payments retrieved"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "result": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/AdminPaymentDto"
+                          }
+                        },
+                        "paginationMeta": {
+                          "$ref": "#/components/schemas/PaginationMeta"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 400,
+                    "message": "Validation failed",
+                    "data": null,
+                    "error": {
+                      "code": "BAD_REQUEST",
+                      "details": [
+                        "email must be an email"
+                      ],
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/payments"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "data": null,
+                    "error": {
+                      "code": "UNAUTHORIZED",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/payments"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden",
+                    "data": null,
+                    "error": {
+                      "code": "FORBIDDEN",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/payments"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Transaction monitor",
+        "tags": [
+          "Admin Payments"
+        ]
+      }
+    },
+    "/api/v1/admin/payments/{id}/refund": {
+      "post": {
+        "description": "Sends the refundable amount back to the paying address in USDC (PRD: manual refunds by an admin; Fysi pays the fee). Queued at once; follow it in `GET /admin/transfers/refund`.",
+        "operationId": "AdminPaymentsController_refundPayment_v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 202
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Refund queued"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 400,
+                    "message": "Nothing on this payment is due back",
+                    "data": null,
+                    "error": {
+                      "code": "BAD_REQUEST",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/payments/{id}/refund"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "data": null,
+                    "error": {
+                      "code": "UNAUTHORIZED",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/payments/{id}/refund"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden",
+                    "data": null,
+                    "error": {
+                      "code": "FORBIDDEN",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/payments/{id}/refund"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The resource does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 404,
+                    "message": "Payment not found",
+                    "data": null,
+                    "error": {
+                      "code": "NOT_FOUND",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/payments/{id}/refund"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The resource already exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 409,
+                    "message": "A refund for this payment is already on its way",
+                    "data": null,
+                    "error": {
+                      "code": "CONFLICT",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/payments/{id}/refund"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Refund a flagged payment",
+        "tags": [
+          "Admin Payments"
+        ]
+      }
+    },
+    "/api/v1/admin/vendor-orders": {
+      "get": {
+        "description": "`escrowStatus=disputed` is the problem-report queue.",
+        "operationId": "AdminPaymentsController_vendorOrders_v1",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size.",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "offset",
+            "required": false,
+            "in": "query",
+            "description": "Items to skip: (page - 1) * limit.",
+            "schema": {
+              "minimum": 0,
+              "default": 0,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "escrowStatus",
+            "required": false,
+            "in": "query",
+            "description": "`disputed`: the problem-report queue.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "held",
+                "disputed",
+                "released",
+                "paid_out",
+                "refunded",
+                "void"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Vendor orders retrieved"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "result": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/AdminVendorOrderDto"
+                          }
+                        },
+                        "paginationMeta": {
+                          "$ref": "#/components/schemas/PaginationMeta"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 400,
+                    "message": "Validation failed",
+                    "data": null,
+                    "error": {
+                      "code": "BAD_REQUEST",
+                      "details": [
+                        "email must be an email"
+                      ],
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/vendor-orders"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "data": null,
+                    "error": {
+                      "code": "UNAUTHORIZED",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/vendor-orders"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden",
+                    "data": null,
+                    "error": {
+                      "code": "FORBIDDEN",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/vendor-orders"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Vendor orders and disputes",
+        "tags": [
+          "Admin Payments"
+        ]
+      }
+    },
+    "/api/v1/admin/vendor-orders/{id}/release": {
+      "post": {
+        "description": "Resolves a dispute in the vendor’s favour (or releases a held order early). Queues the payout.",
+        "operationId": "AdminPaymentsController_release_v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 202
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Payout queued"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 400,
+                    "message": "Validation failed",
+                    "data": null,
+                    "error": {
+                      "code": "BAD_REQUEST",
+                      "details": [
+                        "email must be an email"
+                      ],
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/vendor-orders/{id}/release"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "data": null,
+                    "error": {
+                      "code": "UNAUTHORIZED",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/vendor-orders/{id}/release"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden",
+                    "data": null,
+                    "error": {
+                      "code": "FORBIDDEN",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/vendor-orders/{id}/release"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The resource does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 404,
+                    "message": "Vendor order not found",
+                    "data": null,
+                    "error": {
+                      "code": "NOT_FOUND",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/vendor-orders/{id}/release"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The resource already exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 409,
+                    "message": "Resource already exists",
+                    "data": null,
+                    "error": {
+                      "code": "CONFLICT",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/vendor-orders/{id}/release"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Release escrow to the vendor",
+        "tags": [
+          "Admin Payments"
+        ]
+      }
+    },
+    "/api/v1/admin/vendor-orders/{id}/refund": {
+      "post": {
+        "description": "Before payout only (PRD refund decision: non-delivery, damage or wrong item; personal care only if unopened). Refunds the vendor order’s full subtotal to the address that paid and cancels it.",
+        "operationId": "AdminPaymentsController_refundVendorOrder_v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 202
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Refund queued"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 400,
+                    "message": "Validation failed",
+                    "data": null,
+                    "error": {
+                      "code": "BAD_REQUEST",
+                      "details": [
+                        "email must be an email"
+                      ],
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/vendor-orders/{id}/refund"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "data": null,
+                    "error": {
+                      "code": "UNAUTHORIZED",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/vendor-orders/{id}/refund"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden",
+                    "data": null,
+                    "error": {
+                      "code": "FORBIDDEN",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/vendor-orders/{id}/refund"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The resource does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 404,
+                    "message": "Vendor order not found",
+                    "data": null,
+                    "error": {
+                      "code": "NOT_FOUND",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/vendor-orders/{id}/refund"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The resource already exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 409,
+                    "message": "Resource already exists",
+                    "data": null,
+                    "error": {
+                      "code": "CONFLICT",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/vendor-orders/{id}/refund"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cancel and refund a vendor order",
+        "tags": [
+          "Admin Payments"
+        ]
+      }
+    },
+    "/api/v1/admin/transfers/{kind}": {
+      "get": {
+        "description": "Platform-sent USDC by kind, with status, attempts and the last error.",
+        "operationId": "AdminPaymentsController_transfers_v1",
+        "parameters": [
+          {
+            "name": "kind",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "enum": [
+                "payout",
+                "refund",
+                "withdrawal"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size.",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "offset",
+            "required": false,
+            "in": "query",
+            "description": "Items to skip: (page - 1) * limit.",
+            "schema": {
+              "minimum": 0,
+              "default": 0,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "queued",
+                "submitted",
+                "confirmed",
+                "failed"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Transfers retrieved"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "result": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/AdminTransferDto"
+                          }
+                        },
+                        "paginationMeta": {
+                          "$ref": "#/components/schemas/PaginationMeta"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 400,
+                    "message": "Validation failed",
+                    "data": null,
+                    "error": {
+                      "code": "BAD_REQUEST",
+                      "details": [
+                        "email must be an email"
+                      ],
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/transfers/{kind}"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "data": null,
+                    "error": {
+                      "code": "UNAUTHORIZED",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/transfers/{kind}"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden",
+                    "data": null,
+                    "error": {
+                      "code": "FORBIDDEN",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/transfers/{kind}"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Payouts, refunds or withdrawals",
+        "tags": [
+          "Admin Payments"
+        ]
+      }
+    },
+    "/api/v1/admin/transfers/{kind}/{id}/retry": {
+      "post": {
+        "operationId": "AdminPaymentsController_retry_v1",
+        "parameters": [
+          {
+            "name": "kind",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "enum": [
+                "payout",
+                "refund",
+                "withdrawal"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 202
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Transfer queued again"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "data": null,
+                    "error": {
+                      "code": "UNAUTHORIZED",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/transfers/{kind}/{id}/retry"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden",
+                    "data": null,
+                    "error": {
+                      "code": "FORBIDDEN",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/transfers/{kind}/{id}/retry"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The resource does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 404,
+                    "message": "Transfer not found",
+                    "data": null,
+                    "error": {
+                      "code": "NOT_FOUND",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/transfers/{kind}/{id}/retry"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The resource already exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 409,
+                    "message": "Resource already exists",
+                    "data": null,
+                    "error": {
+                      "code": "CONFLICT",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/admin/transfers/{kind}/{id}/retry"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Retry a failed transfer",
+        "tags": [
+          "Admin Payments"
+        ]
+      }
+    },
+    "/api/v1/wallet": {
+      "post": {
+        "description": "Opt-in custodial wallet (PRD C9). No seed phrase: Fysi holds the key, and each payment needs this PIN.\n\n- Needs a phone number on the account (KYC Tier 1: email + phone, balance capped at about $200; Tier 2 with BVN/NIN lifts it at the pilot).\n- Fysi pays the network reserve and fees: the wallet only ever holds USDC.\n- Fund it by sending USDC on Stellar to `address` (or scanning `depositUri`).",
+        "operationId": "CustomerWalletController_create_v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWalletDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 201
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Wallet created"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CustomerWalletDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 400,
+                    "message": "Add your phone number first (PATCH /auth/me): Tier 1 wallets need email and phone",
+                    "data": null,
+                    "error": {
+                      "code": "BAD_REQUEST",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/wallet"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "data": null,
+                    "error": {
+                      "code": "UNAUTHORIZED",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/wallet"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden",
+                    "data": null,
+                    "error": {
+                      "code": "FORBIDDEN",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/wallet"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The resource already exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 409,
+                    "message": "You already have a Fysi wallet",
+                    "data": null,
+                    "error": {
+                      "code": "CONFLICT",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/wallet"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create my Fysi wallet",
+        "tags": [
+          "Customer Wallet"
+        ]
+      },
+      "get": {
+        "description": "Balance, deposit address and QR request, tier and cap, and the latest payments with explorer links (PRD C9).",
+        "operationId": "CustomerWalletController_get_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Wallet retrieved"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CustomerWalletDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "data": null,
+                    "error": {
+                      "code": "UNAUTHORIZED",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/wallet"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden",
+                    "data": null,
+                    "error": {
+                      "code": "FORBIDDEN",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/wallet"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The resource does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 404,
+                    "message": "No Fysi wallet yet",
+                    "data": null,
+                    "error": {
+                      "code": "NOT_FOUND",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/wallet"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "My Fysi wallet",
+        "tags": [
+          "Customer Wallet"
+        ]
+      }
+    },
+    "/api/v1/wallet/pin": {
+      "put": {
+        "operationId": "CustomerWalletController_changePin_v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePinDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "PIN changed"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 400,
+                    "message": "Password is incorrect",
+                    "data": null,
+                    "error": {
+                      "code": "BAD_REQUEST",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/wallet/pin"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "data": null,
+                    "error": {
+                      "code": "UNAUTHORIZED",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/wallet/pin"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden",
+                    "data": null,
+                    "error": {
+                      "code": "FORBIDDEN",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/wallet/pin"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change my wallet PIN",
+        "tags": [
+          "Customer Wallet"
+        ]
+      }
+    },
+    "/api/v1/vendor/wallet": {
+      "get": {
+        "description": "PRD V5: available USDC, pending (escrow) balance, what can be withdrawn today, and payouts and withdrawals with explorer links. The wallet is created automatically on approval; no seed phrase.",
+        "operationId": "VendorWalletController_get_v1",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Wallet retrieved"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/VendorWalletDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "data": null,
+                    "error": {
+                      "code": "UNAUTHORIZED",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/vendor/wallet"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden",
+                    "data": null,
+                    "error": {
+                      "code": "FORBIDDEN",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/vendor/wallet"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "My wallet",
+        "tags": [
+          "Vendor Wallet"
+        ]
+      }
+    },
+    "/api/v1/vendor/wallet/withdrawals": {
+      "post": {
+        "description": "PRD V6: USDC to an external Stellar address that trusts USDC, within the daily limit. Emails a 6-digit code; finish with `POST /vendor/wallet/withdrawals/{id}/confirm` and your password. Bank cash-out arrives with the NGN anchor at the pilot.",
+        "operationId": "VendorWalletController_withdraw_v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WithdrawDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 201
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Check your email for the confirmation code"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/WithdrawalDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 400,
+                    "message": "That is over the daily withdrawal limit: $100.00 left today",
+                    "data": null,
+                    "error": {
+                      "code": "BAD_REQUEST",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/vendor/wallet/withdrawals"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "data": null,
+                    "error": {
+                      "code": "UNAUTHORIZED",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/vendor/wallet/withdrawals"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden",
+                    "data": null,
+                    "error": {
+                      "code": "FORBIDDEN",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/vendor/wallet/withdrawals"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The resource already exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 409,
+                    "message": "Your wallet is not open yet; it is created when your business is approved",
+                    "data": null,
+                    "error": {
+                      "code": "CONFLICT",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/vendor/wallet/withdrawals"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit hit. Honour the `Retry-After` header before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 429,
+                    "message": "Too Many Requests",
+                    "data": null,
+                    "error": {
+                      "code": "TOO_MANY_REQUESTS",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/vendor/wallet/withdrawals"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Start a withdrawal",
+        "tags": [
+          "Vendor Wallet"
+        ]
+      }
+    },
+    "/api/v1/vendor/wallet/withdrawals/{id}/confirm": {
+      "post": {
+        "description": "Password plus the emailed code. The USDC is sent at once; `status` shows the outcome.",
+        "operationId": "VendorWalletController_confirm_v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmWithdrawalDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Withdrawal sent"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/WithdrawalDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 400,
+                    "message": "Password or code is incorrect",
+                    "data": null,
+                    "error": {
+                      "code": "BAD_REQUEST",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/vendor/wallet/withdrawals/{id}/confirm"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "data": null,
+                    "error": {
+                      "code": "UNAUTHORIZED",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/vendor/wallet/withdrawals/{id}/confirm"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden",
+                    "data": null,
+                    "error": {
+                      "code": "FORBIDDEN",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/vendor/wallet/withdrawals/{id}/confirm"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The resource does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 404,
+                    "message": "Withdrawal not found",
+                    "data": null,
+                    "error": {
+                      "code": "NOT_FOUND",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/vendor/wallet/withdrawals/{id}/confirm"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The resource already exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 409,
+                    "message": "Resource already exists",
+                    "data": null,
+                    "error": {
+                      "code": "CONFLICT",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/vendor/wallet/withdrawals/{id}/confirm"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit hit. Honour the `Retry-After` header before retrying.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 429,
+                    "message": "Too Many Requests",
+                    "data": null,
+                    "error": {
+                      "code": "TOO_MANY_REQUESTS",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/vendor/wallet/withdrawals/{id}/confirm"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Confirm a withdrawal",
+        "tags": [
+          "Vendor Wallet"
+        ]
+      }
+    },
+    "/api/v1/vendor/wallet/withdrawals/{id}": {
+      "delete": {
+        "operationId": "VendorWalletController_cancel_v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 204
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Withdrawal cancelled"
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "data": null,
+                    "error": {
+                      "code": "UNAUTHORIZED",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/vendor/wallet/withdrawals/{id}"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden",
+                    "data": null,
+                    "error": {
+                      "code": "FORBIDDEN",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/vendor/wallet/withdrawals/{id}"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The resource does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 404,
+                    "message": "Withdrawal not found",
+                    "data": null,
+                    "error": {
+                      "code": "NOT_FOUND",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/vendor/wallet/withdrawals/{id}"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The resource already exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 409,
+                    "message": "Resource already exists",
+                    "data": null,
+                    "error": {
+                      "code": "CONFLICT",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/vendor/wallet/withdrawals/{id}"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cancel an unconfirmed withdrawal",
+        "tags": [
+          "Vendor Wallet"
+        ]
+      }
+    },
+    "/api/v1/checkout": {
+      "post": {
+        "description": "Creates the order from the cart (PRD C5–C6). Stock is held for 15 minutes; the order is split per vendor (multi-vendor cart, one payment).\n\nPay with any of the four methods, all of which pay the Fysi settlement account in USDC with the order number as memo:\n1. **External wallet**: `POST /orders/{id}/pay/external` then `/pay/external/submit`.\n2. **Fysi wallet**: `POST /orders/{id}/pay/wallet` with the PIN.\n3. **QR code**: render `payment.sep7Uri`; any SEP-7 Stellar wallet can scan it.\n4. **Payment link**: share `payment.payLink` (the pay page reads `GET /pay/{token}`).\n\nPoll `GET /orders/{id}` until `status` is `paid` (usually seconds). An underpayment leaves the balance in `payment.amountDue`.",
+        "operationId": "OrdersController_checkout_v1",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckoutDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 201
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Order created. Pay within 15 minutes"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OrderDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 400,
+                    "message": "Your cart is empty",
+                    "data": null,
+                    "error": {
+                      "code": "BAD_REQUEST",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/checkout"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "data": null,
+                    "error": {
+                      "code": "UNAUTHORIZED",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/checkout"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Customers only.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden",
+                    "data": null,
+                    "error": {
+                      "code": "FORBIDDEN",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/checkout"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Stock or availability changed; `error.details` lists what.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 409,
+                    "message": "Some items in your cart changed. Review your cart and try again",
+                    "data": null,
+                    "error": {
+                      "code": "CONFLICT",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/checkout"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A dependency is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 503,
+                    "message": "Payments are not available yet: the settlement account is not set up",
+                    "data": null,
+                    "error": {
+                      "code": "SERVICE_UNAVAILABLE",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/checkout"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Check out the cart",
+        "tags": [
+          "Checkout & Orders"
+        ]
+      }
+    },
+    "/api/v1/orders": {
+      "get": {
+        "description": "Order history and status tracking (PRD C8), newest first.",
+        "operationId": "OrdersController_list_v1",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size.",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "offset",
+            "required": false,
+            "in": "query",
+            "description": "Items to skip: (page - 1) * limit.",
+            "schema": {
+              "minimum": 0,
+              "default": 0,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Orders retrieved"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "result": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/OrderDto"
+                          }
+                        },
+                        "paginationMeta": {
+                          "$ref": "#/components/schemas/PaginationMeta"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "data": null,
+                    "error": {
+                      "code": "UNAUTHORIZED",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Customers only.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden",
+                    "data": null,
+                    "error": {
+                      "code": "FORBIDDEN",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "My orders",
+        "tags": [
+          "Checkout & Orders"
+        ]
+      }
+    },
+    "/api/v1/orders/{id}": {
+      "get": {
+        "description": "Status, payment instructions while unpaid, transaction hashes with explorer links (PRD C7), and each vendor’s part with tracking.",
+        "operationId": "OrdersController_get_v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Order retrieved"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OrderDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "data": null,
+                    "error": {
+                      "code": "UNAUTHORIZED",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Customers only.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden",
+                    "data": null,
+                    "error": {
+                      "code": "FORBIDDEN",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The resource does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 404,
+                    "message": "Order not found",
+                    "data": null,
+                    "error": {
+                      "code": "NOT_FOUND",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One order",
+        "tags": [
+          "Checkout & Orders"
+        ]
+      }
+    },
+    "/api/v1/orders/{id}/pay/external": {
+      "post": {
+        "description": "Builds the exact payment (amount due, USDC, memo) from the customer’s wallet address. Sign it in the wallet (Freighter, LOBSTR, xBull, Albedo or a WalletConnect wallet) and send it to `/pay/external/submit`.",
+        "operationId": "OrdersController_prepare_v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExternalPrepareDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Sign this payment in your wallet"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PreparedPaymentDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 400,
+                    "message": "This wallet cannot hold USDC: add the trustline first",
+                    "data": null,
+                    "error": {
+                      "code": "BAD_REQUEST",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}/pay/external"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "data": null,
+                    "error": {
+                      "code": "UNAUTHORIZED",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}/pay/external"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Customers only.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden",
+                    "data": null,
+                    "error": {
+                      "code": "FORBIDDEN",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}/pay/external"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The resource does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 404,
+                    "message": "Order not found",
+                    "data": null,
+                    "error": {
+                      "code": "NOT_FOUND",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}/pay/external"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The order is paid, expired or cancelled, or its payment window closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 409,
+                    "message": "This order is paid",
+                    "data": null,
+                    "error": {
+                      "code": "CONFLICT",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}/pay/external"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "A dependency is unavailable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 503,
+                    "message": "Service Unavailable",
+                    "data": null,
+                    "error": {
+                      "code": "SERVICE_UNAVAILABLE",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}/pay/external"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Pay with an external wallet: prepare",
+        "tags": [
+          "Checkout & Orders"
+        ]
+      }
+    },
+    "/api/v1/orders/{id}/pay/external/submit": {
+      "post": {
+        "description": "Submits the signed payment to Stellar and returns the order, normally already `paid`. Network rejections come back as 400 in plain words.",
+        "operationId": "OrdersController_submit_v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExternalSubmitDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Payment submitted"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OrderDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 400,
+                    "message": "Not enough USDC in the wallet for this amount",
+                    "data": null,
+                    "error": {
+                      "code": "BAD_REQUEST",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}/pay/external/submit"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "data": null,
+                    "error": {
+                      "code": "UNAUTHORIZED",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}/pay/external/submit"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Customers only.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden",
+                    "data": null,
+                    "error": {
+                      "code": "FORBIDDEN",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}/pay/external/submit"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The resource does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 404,
+                    "message": "Order not found",
+                    "data": null,
+                    "error": {
+                      "code": "NOT_FOUND",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}/pay/external/submit"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The order is paid, expired or cancelled, or its payment window closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 409,
+                    "message": "This order is paid",
+                    "data": null,
+                    "error": {
+                      "code": "CONFLICT",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}/pay/external/submit"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Pay with an external wallet: submit",
+        "tags": [
+          "Checkout & Orders"
+        ]
+      }
+    },
+    "/api/v1/orders/{id}/pay/wallet": {
+      "post": {
+        "description": "One tap plus PIN (PRD C6). Blocked with a prompt to fund when the balance is too low. Five wrong PINs lock payments for 15 minutes.",
+        "operationId": "OrdersController_payWallet_v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WalletPayDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Payment sent"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OrderDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "data": null,
+                    "error": {
+                      "code": "UNAUTHORIZED",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}/pay/wallet"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Customers only.\n\nNot allowed to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Wrong PIN",
+                    "data": null,
+                    "error": {
+                      "code": "FORBIDDEN",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}/pay/wallet"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The resource does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 404,
+                    "message": "Order not found",
+                    "data": null,
+                    "error": {
+                      "code": "NOT_FOUND",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}/pay/wallet"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The resource already exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 409,
+                    "message": "Your Fysi wallet balance is too low. Fund it first",
+                    "data": null,
+                    "error": {
+                      "code": "CONFLICT",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}/pay/wallet"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Pay with my Fysi wallet",
+        "tags": [
+          "Checkout & Orders"
+        ]
+      }
+    },
+    "/api/v1/orders/{id}/cancel": {
+      "post": {
+        "description": "Releases the held stock. Not possible once anything was paid.",
+        "operationId": "OrdersController_cancel_v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Order cancelled"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OrderDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "data": null,
+                    "error": {
+                      "code": "UNAUTHORIZED",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}/cancel"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Customers only.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden",
+                    "data": null,
+                    "error": {
+                      "code": "FORBIDDEN",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}/cancel"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The resource does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 404,
+                    "message": "Order not found",
+                    "data": null,
+                    "error": {
+                      "code": "NOT_FOUND",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}/cancel"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The resource already exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 409,
+                    "message": "Resource already exists",
+                    "data": null,
+                    "error": {
+                      "code": "CONFLICT",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}/cancel"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cancel an unpaid order",
+        "tags": [
+          "Checkout & Orders"
+        ]
+      }
+    },
+    "/api/v1/orders/{id}/vendor-orders/{vendorOrderId}/confirm-delivery": {
+      "post": {
+        "description": "PRD C8: releases the vendor’s payout for that part of the order.",
+        "operationId": "OrdersController_confirm_v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vendorOrderId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Delivery confirmed. Thank you!"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OrderDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "data": null,
+                    "error": {
+                      "code": "UNAUTHORIZED",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}/vendor-orders/{vendorOrderId}/confirm-delivery"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Customers only.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden",
+                    "data": null,
+                    "error": {
+                      "code": "FORBIDDEN",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}/vendor-orders/{vendorOrderId}/confirm-delivery"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The resource does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 404,
+                    "message": "Order not found",
+                    "data": null,
+                    "error": {
+                      "code": "NOT_FOUND",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}/vendor-orders/{vendorOrderId}/confirm-delivery"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The resource already exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 409,
+                    "message": "This part of the order cannot be confirmed now",
+                    "data": null,
+                    "error": {
+                      "code": "CONFLICT",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}/vendor-orders/{vendorOrderId}/confirm-delivery"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Confirm delivery",
+        "tags": [
+          "Checkout & Orders"
+        ]
+      }
+    },
+    "/api/v1/orders/{id}/vendor-orders/{vendorOrderId}/problem": {
+      "post": {
+        "description": "PRD C8: from shipping until 7 days after delivery. Holds the vendor’s payout until an admin decides (refund or release).",
+        "operationId": "OrdersController_problem_v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "vendorOrderId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProblemDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Problem reported. The Fysi team will be in touch"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/OrderDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 400,
+                    "message": "Validation failed",
+                    "data": null,
+                    "error": {
+                      "code": "BAD_REQUEST",
+                      "details": [
+                        "email must be an email"
+                      ],
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}/vendor-orders/{vendorOrderId}/problem"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "data": null,
+                    "error": {
+                      "code": "UNAUTHORIZED",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}/vendor-orders/{vendorOrderId}/problem"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Customers only.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden",
+                    "data": null,
+                    "error": {
+                      "code": "FORBIDDEN",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}/vendor-orders/{vendorOrderId}/problem"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The resource does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 404,
+                    "message": "Order not found",
+                    "data": null,
+                    "error": {
+                      "code": "NOT_FOUND",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}/vendor-orders/{vendorOrderId}/problem"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The resource already exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 409,
+                    "message": "Resource already exists",
+                    "data": null,
+                    "error": {
+                      "code": "CONFLICT",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/orders/{id}/vendor-orders/{vendorOrderId}/problem"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Report a problem",
+        "tags": [
+          "Checkout & Orders"
+        ]
+      }
+    },
+    "/api/v1/pay/{token}": {
+      "get": {
+        "description": "Public, no account: what the hosted pay page shows (PRD: payment link the customer can open later or send to someone else). Items and amounts only; no address or personal data.",
+        "operationId": "OrdersController_payPage_v1",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Payment details retrieved"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/PayPageDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The resource does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 404,
+                    "message": "Payment link not found",
+                    "data": null,
+                    "error": {
+                      "code": "NOT_FOUND",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/pay/{token}"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Pay page (payment link)",
+        "tags": [
+          "Checkout & Orders"
+        ]
+      }
+    },
+    "/api/v1/vendor/orders": {
+      "get": {
+        "description": "PRD V8: paid orders with status, payout breakdown and escrow state. Unpaid checkouts are not listed.",
+        "operationId": "VendorOrdersController_list_v1",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size.",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "offset",
+            "required": false,
+            "in": "query",
+            "description": "Items to skip: (page - 1) * limit.",
+            "schema": {
+              "minimum": 0,
+              "default": 0,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "awaiting_payment",
+                "paid",
+                "processing",
+                "shipped",
+                "delivered",
+                "cancelled"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Orders retrieved"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "result": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/VendorOrderDto"
+                          }
+                        },
+                        "paginationMeta": {
+                          "$ref": "#/components/schemas/PaginationMeta"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "data": null,
+                    "error": {
+                      "code": "UNAUTHORIZED",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/vendor/orders"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden",
+                    "data": null,
+                    "error": {
+                      "code": "FORBIDDEN",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/vendor/orders"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "My orders",
+        "tags": [
+          "Vendor Orders"
+        ]
+      }
+    },
+    "/api/v1/vendor/orders/{id}": {
+      "get": {
+        "description": "Items, delivery address and contact for shipping, payout breakdown.",
+        "operationId": "VendorOrdersController_get_v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Order retrieved"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/VendorOrderDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "data": null,
+                    "error": {
+                      "code": "UNAUTHORIZED",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/vendor/orders/{id}"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden",
+                    "data": null,
+                    "error": {
+                      "code": "FORBIDDEN",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/vendor/orders/{id}"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The resource does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 404,
+                    "message": "Order not found",
+                    "data": null,
+                    "error": {
+                      "code": "NOT_FOUND",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/vendor/orders/{id}"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "One order",
+        "tags": [
+          "Vendor Orders"
+        ]
+      }
+    },
+    "/api/v1/vendor/orders/{id}/status": {
+      "patch": {
+        "description": "PRD V8: `processing` → `shipped` (tracking number required; the customer is emailed) → `delivered`.\n\nShipping starts the 7-day timer after which escrow releases automatically. Marking delivered does not release payment by itself: the customer's confirmation or the timer does. To cancel a paid order, contact Fysi: an admin refunds the customer.",
+        "operationId": "VendorOrdersController_update_v1",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VendorStatusDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "number",
+                      "example": 200
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Order updated"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/VendorOrderDto"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request body failed validation.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 400,
+                    "message": "Validation failed",
+                    "data": null,
+                    "error": {
+                      "code": "BAD_REQUEST",
+                      "details": [
+                        "email must be an email"
+                      ],
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/vendor/orders/{id}/status"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid, expired or revoked access token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 401,
+                    "message": "Unauthorized",
+                    "data": null,
+                    "error": {
+                      "code": "UNAUTHORIZED",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/vendor/orders/{id}/status"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Not allowed to perform this action.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 403,
+                    "message": "Forbidden",
+                    "data": null,
+                    "error": {
+                      "code": "FORBIDDEN",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/vendor/orders/{id}/status"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The resource does not exist.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 404,
+                    "message": "Order not found",
+                    "data": null,
+                    "error": {
+                      "code": "NOT_FOUND",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/vendor/orders/{id}/status"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The resource already exists.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/ErrorResponseDto"
+                    }
+                  ],
+                  "example": {
+                    "statusCode": 409,
+                    "message": "Resource already exists",
+                    "data": null,
+                    "error": {
+                      "code": "CONFLICT",
+                      "requestId": "0197c2a4-5b1e-7d3a-9c10-6f2e8b4a1d55",
+                      "timestamp": "2026-10-26T09:30:00.000Z",
+                      "path": "/api/v1/vendor/orders/{id}/status"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update status",
+        "tags": [
+          "Vendor Orders"
+        ]
+      }
+    },
     "/health": {
       "get": {
         "description": "Pings Postgres and Redis. No token needed. A failing dependency returns 503. Not versioned: the path is `/health`, not `/api/v1/health`.",
@@ -10971,7 +15449,7 @@
   },
   "info": {
     "title": "fysi API",
-    "description": "REST API for Fysi, a marketplace for certified eco-friendly products with payments settled in USDC on Stellar. Verified vendors list products; customers browse and keep a cart without an account, then sign up to buy; admins verify vendors and moderate the catalogue.\n\n**Machine-readable spec.** The OpenAPI JSON is served at `/docs-json`; feed it to a client generator for typed requests.\n\n**Responses.** Every success is `{ statusCode, message, data }`. Paginated lists put `{ result, paginationMeta }` in `data`. Errors are `{ statusCode, message, data: null, error: { code, details, requestId, traceId, timestamp, path } }`. Validation errors list each problem in `error.details`.\n\n**Money.** Prices are US dollars as integer **cents** (`priceCents: 1250` = $12.50); responses add a dollar string. Payment is 1:1 in USDC on Stellar, so there is no exchange rate. No floats.\n\n**Sign-up and sign-in.** `POST /api/v1/auth/register` (`accountType` customer or vendor), confirm the emailed code at `POST /api/v1/auth/verify-email` to get tokens, then send `Authorization: Bearer <accessToken>`. Refresh tokens are single use: swap them at `POST /api/v1/auth/refresh`.\n\n**Two-factor sign-in.** Vendors and admins must turn on an authenticator app (`/auth/2fa/setup` then `/auth/2fa/enable`); until then every other route answers 403 `Turn on two-factor sign-in to continue`. With 2FA on, `POST /auth/login` returns an `mfaToken` to finish at `POST /auth/login/2fa`.\n\n**Admins.** No sign-up: the first super admin is created on the server with `pnpm admin:create`; super admins add admins with `POST /api/v1/admin/users`. Admin sessions idle out after `ADMIN_SESSION_IDLE_MINUTES`. Every admin action goes to the append-only audit log (`GET /api/v1/audit-logs`).\n\n**Rate limits.** Every route has a per-client limit; sign-in and code routes have a stricter one. A 429 carries a `Retry-After` header in seconds.",
+    "description": "REST API for Fysi, a marketplace for certified eco-friendly products with payments settled in USDC on Stellar. Verified vendors list products; customers browse and keep a cart without an account, then sign up to buy; admins verify vendors and moderate the catalogue.\n\n**Machine-readable spec.** The OpenAPI JSON is served at `/docs-json`; feed it to a client generator for typed requests.\n\n**Responses.** Every success is `{ statusCode, message, data }`. Paginated lists put `{ result, paginationMeta }` in `data`. Errors are `{ statusCode, message, data: null, error: { code, details, requestId, traceId, timestamp, path } }`. Validation errors list each problem in `error.details`.\n\n**Money.** Prices are US dollars as integer **cents** (`priceCents: 1250` = $12.50); responses add a dollar string. Payment is 1:1 in USDC on Stellar, so there is no exchange rate. No floats. On-chain amounts (amount due, balances) are USDC decimal strings.\n\n**Sign-up and sign-in.** `POST /api/v1/auth/register` (`accountType` customer or vendor), confirm the emailed code at `POST /api/v1/auth/verify-email` to get tokens, then send `Authorization: Bearer <accessToken>`. Refresh tokens are single use: swap them at `POST /api/v1/auth/refresh`.\n\n**Two-factor sign-in.** Vendors and admins must turn on an authenticator app (`/auth/2fa/setup` then `/auth/2fa/enable`); until then every other route answers 403 `Turn on two-factor sign-in to continue`. With 2FA on, `POST /auth/login` returns an `mfaToken` to finish at `POST /auth/login/2fa`.\n\n**Admins.** No sign-up: the first super admin is created on the server with `pnpm admin:create`; super admins add admins with `POST /api/v1/admin/users`. Admin sessions idle out after `ADMIN_SESSION_IDLE_MINUTES`. Every admin action goes to the append-only audit log (`GET /api/v1/audit-logs`).\n\n**Rate limits.** Every route has a per-client limit; sign-in and code routes have a stricter one. A 429 carries a `Retry-After` header in seconds.",
     "version": "1",
     "contact": {}
   },
@@ -10991,6 +15469,26 @@
     {
       "name": "Cart",
       "description": "Guest cart pricing, and the customer cart: add, change, remove, merge the guest cart after sign-up."
+    },
+    {
+      "name": "Checkout & Orders",
+      "description": "Checkout from the cart, the four Stellar payment methods (external wallet, Fysi wallet, SEP-7 QR, payment link), order history, confirm delivery, report a problem, the public pay page."
+    },
+    {
+      "name": "Customer Wallet",
+      "description": "Opt-in custodial Fysi wallet: create with a PIN, balance, deposit address and QR, activity."
+    },
+    {
+      "name": "Vendor Orders",
+      "description": "Vendor fulfilment: paid orders, processing, shipped with tracking, delivered; payout breakdown."
+    },
+    {
+      "name": "Vendor Wallet",
+      "description": "Vendor custodial wallet: available and pending (escrow) balance, payouts, withdrawals."
+    },
+    {
+      "name": "Admin Payments",
+      "description": "Admin: dashboard, transaction monitor, refunds, disputes, payouts and withdrawals."
     },
     {
       "name": "Vendor Onboarding",
@@ -14098,6 +18596,1352 @@
         },
         "required": [
           "quantity"
+        ]
+      },
+      "DashboardPointDto": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string",
+            "example": "2026-11-09",
+            "description": "Start of the day or ISO week (UTC)."
+          },
+          "newVendors": {
+            "type": "number"
+          },
+          "newCustomers": {
+            "type": "number"
+          },
+          "paidOrders": {
+            "type": "number"
+          },
+          "volume": {
+            "description": "Payment volume (USD = USDC).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PriceDto"
+              }
+            ]
+          },
+          "failedPayments": {
+            "type": "number",
+            "description": "Payments that could not be matched to an order."
+          }
+        },
+        "required": [
+          "period",
+          "newVendors",
+          "newCustomers",
+          "paidOrders",
+          "volume",
+          "failedPayments"
+        ]
+      },
+      "DashboardDto": {
+        "type": "object",
+        "properties": {
+          "series": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DashboardPointDto"
+            }
+          },
+          "queues": {
+            "type": "object",
+            "properties": {
+              "vendorsPending": {
+                "type": "number"
+              },
+              "paymentsToRefund": {
+                "type": "number"
+              },
+              "disputes": {
+                "type": "number"
+              },
+              "transfersFailed": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "vendorsPending",
+              "paymentsToRefund",
+              "disputes",
+              "transfersFailed"
+            ]
+          }
+        },
+        "required": [
+          "series",
+          "queues"
+        ]
+      },
+      "AdminPaymentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "enum": [
+              "matched",
+              "overpaid",
+              "unmatched",
+              "refunded"
+            ],
+            "type": "string"
+          },
+          "orderNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "FYK3M9QXWA"
+          },
+          "payer": {
+            "type": "string",
+            "description": "Paying address."
+          },
+          "amount": {
+            "type": "string",
+            "example": "25.5"
+          },
+          "assetCode": {
+            "type": "string",
+            "example": "USDC"
+          },
+          "memo": {
+            "type": "string",
+            "nullable": true
+          },
+          "refundable": {
+            "type": "string",
+            "example": "0",
+            "description": "Still to send back."
+          },
+          "note": {
+            "type": "string",
+            "nullable": true,
+            "description": "Why it was flagged."
+          },
+          "txHash": {
+            "type": "string"
+          },
+          "explorerUrl": {
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "orderNumber",
+          "payer",
+          "amount",
+          "assetCode",
+          "memo",
+          "refundable",
+          "note",
+          "txHash",
+          "explorerUrl",
+          "at"
+        ]
+      },
+      "ReasonDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 500,
+            "example": "Paid twice by mistake"
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "AdminVendorOrderDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderNumber": {
+            "type": "string"
+          },
+          "vendorName": {
+            "type": "string",
+            "nullable": true
+          },
+          "customerEmail": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "escrowStatus": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "held",
+              "disputed",
+              "released",
+              "paid_out",
+              "refunded",
+              "void"
+            ]
+          },
+          "subtotal": {
+            "$ref": "#/components/schemas/PriceDto"
+          },
+          "payout": {
+            "$ref": "#/components/schemas/PriceDto"
+          },
+          "problemReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "trackingNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "orderNumber",
+          "vendorName",
+          "customerEmail",
+          "status",
+          "escrowStatus",
+          "subtotal",
+          "payout",
+          "problemReason",
+          "trackingNumber",
+          "updatedAt"
+        ]
+      },
+      "AdminTransferDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "enum": [
+              "payout",
+              "refund",
+              "withdrawal"
+            ],
+            "type": "string"
+          },
+          "destination": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "string",
+            "example": "23.75"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "submitted",
+              "confirmed",
+              "failed"
+            ],
+            "type": "string"
+          },
+          "attempts": {
+            "type": "number"
+          },
+          "lastError": {
+            "type": "string",
+            "nullable": true
+          },
+          "txHash": {
+            "type": "string",
+            "nullable": true
+          },
+          "explorerUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "destination",
+          "amount",
+          "status",
+          "attempts",
+          "lastError",
+          "txHash",
+          "explorerUrl",
+          "createdAt"
+        ]
+      },
+      "WalletActivityDto": {
+        "type": "object",
+        "properties": {
+          "direction": {
+            "enum": [
+              "in",
+              "out"
+            ],
+            "type": "string"
+          },
+          "amount": {
+            "type": "string",
+            "example": "25.5"
+          },
+          "assetCode": {
+            "type": "string",
+            "example": "USDC"
+          },
+          "counterparty": {
+            "type": "string",
+            "description": "The other party."
+          },
+          "memo": {
+            "type": "string",
+            "nullable": true,
+            "example": "FYK3M9QXWA"
+          },
+          "txHash": {
+            "type": "string"
+          },
+          "explorerUrl": {
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "direction",
+          "amount",
+          "assetCode",
+          "counterparty",
+          "memo",
+          "txHash",
+          "explorerUrl",
+          "at"
+        ]
+      },
+      "CustomerWalletDto": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "description": "Deposit address (G…). Fund it with USDC on Stellar."
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "active"
+            ],
+            "type": "string",
+            "description": "`pending` while the account opens on the network (usually seconds)."
+          },
+          "balance": {
+            "type": "string",
+            "example": "40.25",
+            "description": "USDC balance."
+          },
+          "kycTier": {
+            "type": "number",
+            "example": 1,
+            "description": "KYC tier: 1 = email + phone (capped), 2 = BVN/NIN (pilot)."
+          },
+          "balanceCap": {
+            "nullable": true,
+            "description": "Tier 1 balance cap; null without a cap.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PriceDto"
+              }
+            ]
+          },
+          "overCap": {
+            "type": "boolean",
+            "description": "The balance is above the tier cap: verify identity to lift it."
+          },
+          "depositUri": {
+            "type": "string",
+            "example": "web+stellar:pay?destination=G…&asset_code=USDC&asset_issuer=G…",
+            "description": "SEP-7 request to fund the wallet: render as a QR code (PRD C9)."
+          },
+          "activity": {
+            "description": "Latest 20 payments, newest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WalletActivityDto"
+            }
+          }
+        },
+        "required": [
+          "address",
+          "status",
+          "balance",
+          "kycTier",
+          "balanceCap",
+          "overCap",
+          "depositUri",
+          "activity"
+        ]
+      },
+      "CreateWalletDto": {
+        "type": "object",
+        "properties": {
+          "pin": {
+            "type": "string",
+            "example": "482913",
+            "description": "6-digit PIN that confirms each payment (PRD)."
+          }
+        },
+        "required": [
+          "pin"
+        ]
+      },
+      "ChangePinDto": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "example": "correct-horse-battery"
+          },
+          "newPin": {
+            "type": "string",
+            "example": "730184"
+          }
+        },
+        "required": [
+          "password",
+          "newPin"
+        ]
+      },
+      "TransferViewDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "enum": [
+              "payout",
+              "withdrawal"
+            ],
+            "type": "string"
+          },
+          "amount": {
+            "type": "string",
+            "example": "23.75"
+          },
+          "orderNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "FYK3M9QXWA",
+            "description": "Order number for payouts."
+          },
+          "destination": {
+            "type": "string",
+            "nullable": true,
+            "description": "Destination address for withdrawals."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "awaiting_confirmation",
+              "queued",
+              "submitted",
+              "confirmed",
+              "failed"
+            ]
+          },
+          "txHash": {
+            "type": "string",
+            "nullable": true
+          },
+          "explorerUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "amount",
+          "orderNumber",
+          "destination",
+          "status",
+          "txHash",
+          "explorerUrl",
+          "error",
+          "createdAt"
+        ]
+      },
+      "VendorWalletDto": {
+        "type": "object",
+        "properties": {
+          "address": {
+            "type": "string",
+            "nullable": true,
+            "description": "Custodial wallet address; null until approval."
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "active",
+              "none"
+            ],
+            "type": "string"
+          },
+          "available": {
+            "description": "USDC in the wallet now (PRD V5 \"available\").",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PriceDto"
+              }
+            ]
+          },
+          "pending": {
+            "description": "Paid orders still in escrow or on their way (PRD V5 \"pending\").",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PriceDto"
+              }
+            ]
+          },
+          "withdrawableToday": {
+            "description": "What can still be withdrawn in the next 24 hours.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PriceDto"
+              }
+            ]
+          },
+          "history": {
+            "description": "Payouts and withdrawals, newest first.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransferViewDto"
+            }
+          }
+        },
+        "required": [
+          "address",
+          "status",
+          "available",
+          "pending",
+          "withdrawableToday",
+          "history"
+        ]
+      },
+      "WithdrawalDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "enum": [
+              "payout",
+              "withdrawal"
+            ],
+            "type": "string"
+          },
+          "amount": {
+            "type": "string",
+            "example": "23.75"
+          },
+          "orderNumber": {
+            "type": "string",
+            "nullable": true,
+            "example": "FYK3M9QXWA",
+            "description": "Order number for payouts."
+          },
+          "destination": {
+            "type": "string",
+            "nullable": true,
+            "description": "Destination address for withdrawals."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "awaiting_confirmation",
+              "queued",
+              "submitted",
+              "confirmed",
+              "failed"
+            ]
+          },
+          "txHash": {
+            "type": "string",
+            "nullable": true
+          },
+          "explorerUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "error": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "confirmBy": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Confirm before this time."
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "amount",
+          "orderNumber",
+          "destination",
+          "status",
+          "txHash",
+          "explorerUrl",
+          "error",
+          "createdAt"
+        ]
+      },
+      "WithdrawDto": {
+        "type": "object",
+        "properties": {
+          "destination": {
+            "type": "string",
+            "pattern": "^G[A-Z2-7]{55}$",
+            "description": "External Stellar address (G…) that holds a USDC trustline."
+          },
+          "amountCents": {
+            "type": "number",
+            "minimum": 100,
+            "maximum": 100000000,
+            "example": 5000,
+            "description": "US cents ($50.00 = 5000)."
+          }
+        },
+        "required": [
+          "destination",
+          "amountCents"
+        ]
+      },
+      "ConfirmWithdrawalDto": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "example": "correct-horse-battery"
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^\\d{6}$",
+            "example": "482913",
+            "description": "Code from the email."
+          }
+        },
+        "required": [
+          "password",
+          "code"
+        ]
+      },
+      "AddressDto": {
+        "type": "object",
+        "properties": {
+          "recipientName": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100,
+            "example": "Grace Ajayi"
+          },
+          "phone": {
+            "type": "string",
+            "example": "+2348031234567"
+          },
+          "line1": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 200,
+            "example": "14 Bourdillon Road"
+          },
+          "line2": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 200,
+            "example": "Flat 3"
+          },
+          "city": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 80,
+            "example": "Ikoyi"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "Abia",
+              "Adamawa",
+              "Akwa Ibom",
+              "Anambra",
+              "Bauchi",
+              "Bayelsa",
+              "Benue",
+              "Borno",
+              "Cross River",
+              "Delta",
+              "Ebonyi",
+              "Edo",
+              "Ekiti",
+              "Enugu",
+              "FCT",
+              "Gombe",
+              "Imo",
+              "Jigawa",
+              "Kaduna",
+              "Kano",
+              "Katsina",
+              "Kebbi",
+              "Kogi",
+              "Kwara",
+              "Lagos",
+              "Nasarawa",
+              "Niger",
+              "Ogun",
+              "Ondo",
+              "Osun",
+              "Oyo",
+              "Plateau",
+              "Rivers",
+              "Sokoto",
+              "Taraba",
+              "Yobe",
+              "Zamfara"
+            ],
+            "example": "Lagos"
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 300,
+            "example": "Call on arrival"
+          }
+        },
+        "required": [
+          "recipientName",
+          "phone",
+          "line1",
+          "city",
+          "state"
+        ]
+      },
+      "PaymentInstructionsDto": {
+        "type": "object",
+        "properties": {
+          "network": {
+            "type": "string",
+            "example": "testnet"
+          },
+          "networkPassphrase": {
+            "type": "string",
+            "example": "Test SDF Network ; September 2015"
+          },
+          "destination": {
+            "type": "string",
+            "description": "Fysi settlement account: the payment destination."
+          },
+          "assetCode": {
+            "type": "string",
+            "example": "USDC"
+          },
+          "assetIssuer": {
+            "type": "string"
+          },
+          "memo": {
+            "type": "string",
+            "example": "FYK3M9QXWA",
+            "description": "Text memo. Required: it is how the payment is matched to the order."
+          },
+          "amountDue": {
+            "type": "string",
+            "example": "25.5",
+            "description": "USDC still to pay (7 decimals at most)."
+          },
+          "sep7Uri": {
+            "type": "string",
+            "example": "web+stellar:pay?destination=G…&amount=25.5&asset_code=USDC&asset_issuer=G…&memo=FYK3M9QXWA&memo_type=MEMO_TEXT",
+            "description": "SEP-7 payment request: render as the checkout QR code (PRD: scan QR)."
+          },
+          "payLink": {
+            "type": "string",
+            "example": "https://fysi.ng/pay/Hk3…",
+            "description": "Hosted pay page to open later or send to someone else (PRD: payment link)."
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "The QR code and link stop working at this time."
+          }
+        },
+        "required": [
+          "network",
+          "networkPassphrase",
+          "destination",
+          "assetCode",
+          "assetIssuer",
+          "memo",
+          "amountDue",
+          "sep7Uri",
+          "payLink",
+          "expiresAt"
+        ]
+      },
+      "TransactionRefDto": {
+        "type": "object",
+        "properties": {
+          "txHash": {
+            "type": "string"
+          },
+          "explorerUrl": {
+            "type": "string",
+            "example": "https://stellar.expert/explorer/testnet/tx/…"
+          },
+          "amount": {
+            "type": "string",
+            "example": "25.5"
+          },
+          "at": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "txHash",
+          "explorerUrl",
+          "amount",
+          "at"
+        ]
+      },
+      "OrderLineDto": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "example": "Organic cotton tote bag"
+          },
+          "unitPrice": {
+            "$ref": "#/components/schemas/PriceDto"
+          },
+          "quantity": {
+            "type": "number",
+            "example": 2
+          },
+          "lineTotal": {
+            "$ref": "#/components/schemas/PriceDto"
+          }
+        },
+        "required": [
+          "productId",
+          "title",
+          "unitPrice",
+          "quantity",
+          "lineTotal"
+        ]
+      },
+      "CustomerVendorOrderDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "vendorName": {
+            "type": "string",
+            "example": "EcoThreads Lagos"
+          },
+          "vendorSlug": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "enum": [
+              "awaiting_payment",
+              "paid",
+              "processing",
+              "shipped",
+              "delivered",
+              "cancelled"
+            ],
+            "type": "string"
+          },
+          "subtotal": {
+            "$ref": "#/components/schemas/PriceDto"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderLineDto"
+            }
+          },
+          "carrier": {
+            "type": "string",
+            "nullable": true
+          },
+          "trackingNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "shippedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "deliveredAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "confirmedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "canConfirmDelivery": {
+            "type": "boolean",
+            "description": "Show \"Confirm delivery\" (PRD C8)."
+          },
+          "canReportProblem": {
+            "type": "boolean",
+            "description": "Show \"Report a problem\" (until 7 days after delivery)."
+          },
+          "problemReason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "vendorName",
+          "vendorSlug",
+          "status",
+          "subtotal",
+          "lines",
+          "carrier",
+          "trackingNumber",
+          "shippedAt",
+          "deliveredAt",
+          "confirmedAt",
+          "canConfirmDelivery",
+          "canReportProblem",
+          "problemReason"
+        ]
+      },
+      "OrderDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "number": {
+            "type": "string",
+            "example": "FYK3M9QXWA"
+          },
+          "status": {
+            "enum": [
+              "awaiting_payment",
+              "paid",
+              "expired",
+              "cancelled"
+            ],
+            "type": "string"
+          },
+          "total": {
+            "$ref": "#/components/schemas/PriceDto"
+          },
+          "paid": {
+            "type": "string",
+            "example": "10",
+            "description": "USDC received so far."
+          },
+          "deliveryAddress": {
+            "$ref": "#/components/schemas/AddressDto"
+          },
+          "payment": {
+            "nullable": true,
+            "description": "While awaiting payment: everything to pay, by any method. Null otherwise.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PaymentInstructionsDto"
+              }
+            ]
+          },
+          "transactions": {
+            "description": "Payments received, with transaction hashes and explorer links (PRD C7).",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransactionRefDto"
+            }
+          },
+          "vendorOrders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomerVendorOrderDto"
+            }
+          },
+          "paidAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "status",
+          "total",
+          "paid",
+          "deliveryAddress",
+          "payment",
+          "transactions",
+          "vendorOrders",
+          "paidAt",
+          "createdAt"
+        ]
+      },
+      "CheckoutDto": {
+        "type": "object",
+        "properties": {
+          "deliveryAddress": {
+            "description": "Delivery address (PRD C5).",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AddressDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "deliveryAddress"
+        ]
+      },
+      "PreparedPaymentDto": {
+        "type": "object",
+        "properties": {
+          "transaction": {
+            "type": "string",
+            "description": "Unsigned transaction (base64 XDR) for the wallet to sign."
+          },
+          "networkPassphrase": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "string",
+            "example": "25.5"
+          },
+          "expiresAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transaction",
+          "networkPassphrase",
+          "amount",
+          "expiresAt"
+        ]
+      },
+      "ExternalPrepareDto": {
+        "type": "object",
+        "properties": {
+          "sourceAddress": {
+            "type": "string",
+            "pattern": "^G[A-Z2-7]{55}$",
+            "description": "Address of the customer’s own wallet (Freighter, LOBSTR, xBull, Albedo…)."
+          }
+        },
+        "required": [
+          "sourceAddress"
+        ]
+      },
+      "ExternalSubmitDto": {
+        "type": "object",
+        "properties": {
+          "signedTransaction": {
+            "type": "string",
+            "minLength": 100,
+            "maxLength": 20000,
+            "description": "The transaction from `prepare`, signed by the wallet (base64 XDR)."
+          }
+        },
+        "required": [
+          "signedTransaction"
+        ]
+      },
+      "WalletPayDto": {
+        "type": "object",
+        "properties": {
+          "pin": {
+            "type": "string",
+            "pattern": "^\\d{6}$",
+            "example": "482913",
+            "description": "6-digit Fysi wallet PIN."
+          }
+        },
+        "required": [
+          "pin"
+        ]
+      },
+      "ProblemDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 1000,
+            "example": "The tote arrived torn at the handle."
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "PayPageDto": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "string",
+            "example": "FYK3M9QXWA"
+          },
+          "status": {
+            "enum": [
+              "awaiting_payment",
+              "paid",
+              "expired",
+              "cancelled"
+            ],
+            "type": "string"
+          },
+          "total": {
+            "$ref": "#/components/schemas/PriceDto"
+          },
+          "paid": {
+            "type": "string",
+            "example": "0"
+          },
+          "items": {
+            "example": [
+              "Organic cotton tote bag × 2"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "payment": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PaymentInstructionsDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "number",
+          "status",
+          "total",
+          "paid",
+          "items",
+          "payment"
+        ]
+      },
+      "VendorOrderDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderNumber": {
+            "type": "string",
+            "example": "FYK3M9QXWA"
+          },
+          "status": {
+            "enum": [
+              "awaiting_payment",
+              "paid",
+              "processing",
+              "shipped",
+              "delivered",
+              "cancelled"
+            ],
+            "type": "string"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderLineDto"
+            }
+          },
+          "subtotal": {
+            "$ref": "#/components/schemas/PriceDto"
+          },
+          "commissionBps": {
+            "type": "number",
+            "example": 500,
+            "description": "Commission in basis points (500 = 5%)."
+          },
+          "commission": {
+            "$ref": "#/components/schemas/PriceDto"
+          },
+          "payout": {
+            "description": "What reaches the wallet: subtotal minus commission.",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PriceDto"
+              }
+            ]
+          },
+          "escrowStatus": {
+            "enum": [
+              "pending",
+              "held",
+              "disputed",
+              "released",
+              "paid_out",
+              "refunded",
+              "void"
+            ],
+            "type": "string",
+            "description": "`held`: paid, in escrow (shown as pending balance). `released`/`paid_out`: on its way / in the wallet. `disputed`: the customer reported a problem."
+          },
+          "autoReleaseAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "deliveryAddress": {
+            "$ref": "#/components/schemas/AddressDto"
+          },
+          "carrier": {
+            "type": "string",
+            "nullable": true
+          },
+          "trackingNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "problemReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "paidAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "shippedAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
+          "deliveredAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "orderNumber",
+          "status",
+          "lines",
+          "subtotal",
+          "commissionBps",
+          "commission",
+          "payout",
+          "escrowStatus",
+          "autoReleaseAt",
+          "customerName",
+          "deliveryAddress",
+          "carrier",
+          "trackingNumber",
+          "problemReason",
+          "paidAt",
+          "shippedAt",
+          "deliveredAt"
+        ]
+      },
+      "VendorStatusDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "enum": [
+              "processing",
+              "shipped",
+              "delivered"
+            ],
+            "type": "string"
+          },
+          "carrier": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 80,
+            "example": "GIG Logistics"
+          },
+          "trackingNumber": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 80,
+            "example": "GIG-4471-2209",
+            "description": "Required when marking `shipped` (PRD V8: vendor adds tracking)."
+          }
+        },
+        "required": [
+          "status"
         ]
       }
     }

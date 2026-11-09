@@ -18,3 +18,7 @@ process.env.STELLAR_ASSETS =
   'USDC:GDVEU3DD4KOFECV66VIHWEZOYX4ZKR3WV27L464SIIPOU2IUI3JCZA57';
 // A throwaway platform key per run.
 process.env.STELLAR_PLATFORM_SECRET = Keypair.random().secret();
+// Tests drive the watcher and sweeper themselves (helpers.tick).
+process.env.WATCHER_INTERVAL_MS = '0';
+process.env.SWEEP_INTERVAL_SECONDS = '0';
+process.env.WALLET_PROVIDER = 'local';

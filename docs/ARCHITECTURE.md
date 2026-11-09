@@ -6,7 +6,7 @@ Fysi is a marketplace for certified eco-friendly products, paid in USDC on Stell
 Next.js frontend (separate repo)
         │  HTTPS, JSON, Bearer tokens
         ▼
-NestJS API  /api/v1 ──────────────► Stellar (Horizon)       phase 2: payments
+NestJS API  /api/v1 ──────────────► Stellar (Horizon): USDC payments, custodial wallets
    │        │        │
    ▼        ▼        ▼
 Supabase  Upstash  Supabase Storage (S3)
@@ -21,7 +21,7 @@ Postgres  Redis    photos, logos, KYB documents
 | Redis | Upstash | Token-bucket rate limiting (fails open if Redis is down) |
 | Object storage | Supabase Storage over S3, private bucket | Product photos, logos, avatars, vendor documents; served by short-lived signed links |
 | Email | Resend (console in dev/staging) | Codes, admin invites, vendor decisions |
-| Stellar | SDF Horizon | Network config and account lookups now; payments in phase 2 |
+| Stellar | SDF Horizon | Settlement account, custodial wallets, payment watcher, payouts (see STELLAR.md) |
 
 ## Request pipeline
 
@@ -49,7 +49,10 @@ Postgres  Redis    photos, logos, KYB documents
 | `categories` | Public category list with counts; admin create, rename, reorder, deactivate |
 | `mail` | Mailer abstraction (Resend or console) and the branded, responsive templates |
 | `storage` | Object storage abstraction; image and document type checks by bytes |
-| `stellar` | Network config, asset/amount/address rules, Horizon ledger, platform signer (see STELLAR.md) |
+| `stellar` | Network config, asset/amount/address rules, Horizon ledger, transaction builders and SEP-7 (see STELLAR.md) |
+| `wallets` | Custody provider (`custody.ts`), wallet service: sponsored account activation, balances, platform-signed and fee-bumped transfers, settlement setup |
+| `orders` | Checkout (stock hold, per-vendor split, commission), payment methods, customer order actions, vendor fulfilment, pay page; `rules.ts` holds the money rules |
+| `payments` | Payment watcher, escrow, payouts / refunds / withdrawals, scheduler, order emails, customer and vendor wallet views, admin transaction monitor and dashboard |
 | `rate-limit`, `redis`, `health` | Token bucket, Redis client, `/health` |
 
 ## Identity and sessions
@@ -76,7 +79,7 @@ draft ──submit──► pending ──approve──► approved ◄──rei
 - Submitting needs business name, phone, address, state, category, CAC number, director NIN/BVN, a CAC certificate, and a sustainability certificate (with its label) or evidence.
 - Approval fixes the storefront slug and records the accepted labels: with one or more, the store and its products show **Certified**; without, **Fysi Reviewed** (PRD accepted-certifications decision). Products may only claim the store's verified labels.
 - Identity fields and documents lock from submission; description, phone and logo stay editable.
-- Phase 2 hooks the custodial wallet creation into approval (PRD V4).
+- Approval creates the vendor's custodial wallet (PRD V4).
 
 ## What customers can see
 
@@ -96,4 +99,13 @@ scripts/        create-admin, mail-test, stellar-smoke, export-openapi
 docs/           this documentation
 Dockerfile      build → migrate → start
 render.yaml     Render Blueprint
+```
+
+## Order lifecycle
+
+```
+cart ──checkout──► order awaiting_payment ──USDC + memo──► paid ─┬─► vendor order: paid → processing → shipped → delivered
+                    │  (stock held 15 min)                         │    escrow: held ─confirm / 7 days─► released ─► paid_out
+                    └─expired / cancelled (stock back)            │                └─problem─► disputed ─admin─► released | refunded
+                                                                   └─ one vendor order per store in the cart
 ```

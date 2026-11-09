@@ -9,3 +9,6 @@ export * from './used-refresh-tokens.js';
 export * from './user-suspensions.js';
 export * from './users.js';
 export * from './vendors.js';
+export * from './orders.js';
+export * from './payments.js';
+export * from './wallets.js';

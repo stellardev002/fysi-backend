@@ -50,6 +50,20 @@ export class StellarConfig {
     this.assets = parseAssetList(env.STELLAR_ASSETS);
   }
 
+  /** The asset orders are paid in: the first issued (non-XLM) asset, i.e. USDC. */
+  get settlementAsset(): AllowedAsset {
+    const asset = this.assets.find((a) => !a.native);
+    if (!asset)
+      throw new Error(
+        'STELLAR_ASSETS needs the settlement asset as CODE:ISSUER (USDC)',
+      );
+    return asset;
+  }
+
+  get isTestnet(): boolean {
+    return this.network === StellarNetwork.Testnet;
+  }
+
   findAsset(id: string): AllowedAsset | undefined {
     return this.assets.find((a) => a.id === id);
   }

@@ -74,7 +74,7 @@ function setupSwagger(app: INestApplication, appName: string): void {
           '',
           '**Responses.** Every success is `{ statusCode, message, data }`. Paginated lists put `{ result, paginationMeta }` in `data`. Errors are `{ statusCode, message, data: null, error: { code, details, requestId, traceId, timestamp, path } }`. Validation errors list each problem in `error.details`.',
           '',
-          '**Money.** Prices are US dollars as integer **cents** (`priceCents: 1250` = $12.50); responses add a dollar string. Payment is 1:1 in USDC on Stellar, so there is no exchange rate. No floats.',
+          '**Money.** Prices are US dollars as integer **cents** (`priceCents: 1250` = $12.50); responses add a dollar string. Payment is 1:1 in USDC on Stellar, so there is no exchange rate. No floats. On-chain amounts (amount due, balances) are USDC decimal strings.',
           '',
           '**Sign-up and sign-in.** `POST /api/v1/auth/register` (`accountType` customer or vendor), confirm the emailed code at `POST /api/v1/auth/verify-email` to get tokens, then send `Authorization: Bearer <accessToken>`. Refresh tokens are single use: swap them at `POST /api/v1/auth/refresh`.',
           '',
@@ -97,6 +97,26 @@ function setupSwagger(app: INestApplication, appName: string): void {
       .addTag(
         'Cart',
         'Guest cart pricing, and the customer cart: add, change, remove, merge the guest cart after sign-up.',
+      )
+      .addTag(
+        'Checkout & Orders',
+        'Checkout from the cart, the four Stellar payment methods (external wallet, Fysi wallet, SEP-7 QR, payment link), order history, confirm delivery, report a problem, the public pay page.',
+      )
+      .addTag(
+        'Customer Wallet',
+        'Opt-in custodial Fysi wallet: create with a PIN, balance, deposit address and QR, activity.',
+      )
+      .addTag(
+        'Vendor Orders',
+        'Vendor fulfilment: paid orders, processing, shipped with tracking, delivered; payout breakdown.',
+      )
+      .addTag(
+        'Vendor Wallet',
+        'Vendor custodial wallet: available and pending (escrow) balance, payouts, withdrawals.',
+      )
+      .addTag(
+        'Admin Payments',
+        'Admin: dashboard, transaction monitor, refunds, disputes, payouts and withdrawals.',
       )
       .addTag(
         'Vendor Onboarding',

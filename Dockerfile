@@ -25,5 +25,6 @@ COPY --chown=node:node package.json ./
 USER node
 EXPOSE 4000
 # Migrations run first; a failed migration exits non-zero and blocks the deploy.
-# Concurrent replicas serialise on a Postgres advisory lock.
-CMD ["sh", "-c", "node dist/database/migrate.js && exec node dist/main.js"]
+# Concurrent replicas serialise on a Postgres advisory lock. Then the settlement
+# account is opened if needed (idempotent; a failure only delays payments).
+CMD ["sh", "-c", "node dist/database/migrate.js && (node scripts/platform-setup.mjs || echo 'Settlement setup skipped; checkout answers 503 until it succeeds') && exec node dist/main.js"]

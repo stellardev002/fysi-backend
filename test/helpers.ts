@@ -9,12 +9,11 @@ import { configureApp } from '../src/app.setup.js';
 import { totpCode, totpStep } from '../src/auth/totp.js';
 import { runMigrations } from '../src/database/migrator.js';
 import { Mailer } from '../src/mail/mailer.js';
-import {
-  type LedgerAccount,
-  type LedgerTransaction,
-  StellarLedger,
-  type SubmitOutcome,
-} from '../src/stellar/ledger.js';
+import { StellarLedger } from '../src/stellar/ledger.js';
+import { WalletsService } from '../src/wallets/wallets.service.js';
+import { PaymentsScheduler } from '../src/payments/scheduler.js';
+import { PaymentWatcher } from '../src/payments/watcher.service.js';
+import { FakeLedger } from './fake-chain.js';
 import { ObjectStorage } from '../src/storage/object-storage.js';
 
 /** Latest code mailed to each address, and every subject sent to it. */
@@ -50,24 +49,6 @@ class FakeStorage extends ObjectStorage {
   delete(keys: string[]) {
     for (const k of keys) fakeBucket.delete(k);
     return Promise.resolve();
-  }
-}
-
-/** Accounts on the fake chain, by address. */
-export const fakeChain = new Map<string, LedgerAccount>();
-
-class FakeLedger extends StellarLedger {
-  loadAccount(address: string): Promise<LedgerAccount | null> {
-    return Promise.resolve(fakeChain.get(address) ?? null);
-  }
-  baseFee(): Promise<number> {
-    return Promise.resolve(100);
-  }
-  submit(): Promise<SubmitOutcome> {
-    return Promise.resolve({ kind: 'failed', codes: ['tx_failed'] });
-  }
-  findTransaction(): Promise<LedgerTransaction> {
-    return Promise.resolve({ found: false });
   }
 }
 
@@ -274,7 +255,7 @@ export async function completeApplication(
 export async function approvedVendor(
   app: NestExpressApplication,
   admin: Session,
-  opts: { certification?: string | null; businessName?: string } = {},
+  opts: { certification?: string | null; businessName?: string; founding?: boolean } = {},
 ): Promise<Session & { slug: string }> {
   const vendor = await registerVendor(app);
   await completeApplication(app, vendor, opts);
@@ -285,7 +266,7 @@ export async function approvedVendor(
     `/api/v1/admin/vendors/${vendor.userId}/approve`,
     admin.accessToken,
   )
-    .send({})
+    .send(opts.founding ? { foundingVendor: true } : {})
     .expect(200);
   return { ...vendor, slug: approved.body.data.slug };
 }
@@ -308,4 +289,15 @@ export async function createProduct(
     })
     .expect(201);
   return res.body.data as { id: string; slug: string; [k: string]: unknown };
+}
+
+/** Opens the settlement account on the fake chain (Friendbot + USDC trustline). */
+export async function setupPayments(app: NestExpressApplication) {
+  return app.get(WalletsService).setupSettlement();
+}
+
+/** One watcher pass and one sweep, as the scheduler would run them. */
+export async function tick(app: NestExpressApplication) {
+  await app.get(PaymentWatcher).sync();
+  await app.get(PaymentsScheduler).sweep();
 }

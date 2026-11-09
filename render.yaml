@@ -2,8 +2,10 @@
 # Values marked `sync: false` are asked for once when the Blueprint is created.
 # Full walkthrough: docs/DEPLOYMENT.md
 #
-# Phase 1 runs on the free plan. Phase 2 adds the payment watcher, which must
-# stay awake (payments confirmed in under 10 s): move to a paid plan then.
+# Payments need an always-on instance: the payment watcher confirms orders
+# within seconds and the sweeper drives payouts. The free plan sleeps (nothing
+# is lost, the watcher replays from its cursor, but confirmations wait for a
+# wake-up), so use `starter` or above once payments are live.
 services:
   - type: web
     name: fysi-api
@@ -41,6 +43,8 @@ services:
       # values are not guaranteed to be 32 bytes, and losing it locks out every 2FA user.
       - key: DATA_ENCRYPTION_KEY
         sync: false
+      - key: WALLET_PROVIDER
+        value: local
       - key: MFA_REQUIRED_ROLES
         value: vendor,admin,super_admin
       - key: ADMIN_SESSION_IDLE_MINUTES

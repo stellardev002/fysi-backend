@@ -12,6 +12,8 @@ import { users } from './users.js';
 export const otpPurposeEnum = pgEnum('otp_purpose', [
   'verify_email',
   'reset_password',
+  // Confirms a vendor withdrawal (PRD: password + email OTP).
+  'withdrawal',
 ]);
 
 export type OtpPurpose = (typeof otpPurposeEnum.enumValues)[number];

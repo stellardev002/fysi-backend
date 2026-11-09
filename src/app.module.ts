@@ -23,6 +23,9 @@ import { StellarModule } from './stellar/stellar.module.js';
 import { StorageModule } from './storage/storage.module.js';
 import { UsersModule } from './users/users.module.js';
 import { CartModule } from './cart/cart.module.js';
+import { OrdersModule } from './orders/orders.module.js';
+import { PaymentsModule } from './payments/payments.module.js';
+import { WalletsModule } from './wallets/wallets.module.js';
 import { SecretBoxModule } from './common/secret-box.module.js';
 import { ProductsModule } from './products/products.module.js';
 import { VendorsModule } from './vendors/vendors.module.js';
@@ -119,6 +122,9 @@ const isInstalled = (pkg: string): boolean => {
     VendorsModule,
     ProductsModule,
     CartModule,
+    WalletsModule,
+    PaymentsModule,
+    OrdersModule,
     HealthModule,
   ],
   providers: [

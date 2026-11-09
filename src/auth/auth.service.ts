@@ -593,6 +593,39 @@ export class AuthService {
     };
   }
 
+  /** Emails a code that confirms a withdrawal (PRD: password + email OTP). */
+  async issueWithdrawalCode(
+    userId: string,
+    details: { amountUsd: string; destination: string },
+  ): Promise<OtpIssuedDto> {
+    const pending = await this.database.transaction(async (tx) => {
+      const user = await lockUser(tx, userId, 'share');
+      if (!user) throw new UnauthorizedException();
+      return this.issueOtp(tx, user.id, user.email, 'withdrawal');
+    });
+    void this.mail
+      .sendWithdrawalCode(pending.email, pending.code, this.otpTtlMs / 60_000, details)
+      .catch((err: unknown) =>
+        this.logger.error({ err }, 'Failed to send withdrawal code'),
+      );
+    return this.otpIssued();
+  }
+
+  /** True when both the password and the emailed withdrawal code are right; the code is spent. */
+  async confirmWithdrawalCode(
+    userId: string,
+    password: string,
+    code: string,
+  ): Promise<boolean> {
+    return this.database.transaction(async (tx) => {
+      const user = await lockUser(tx, userId, 'update');
+      if (!user) throw new UnauthorizedException();
+      // A wrong password leaves the code usable; the route's rate limit caps guesses.
+      if (!(await verify(user.passwordHash, password))) return false;
+      return this.consumeOtp(tx, user.id, 'withdrawal', code);
+    });
+  }
+
   private invalidCode() {
     return new BadRequestException('Invalid or expired code');
   }

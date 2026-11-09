@@ -18,6 +18,8 @@ import {
   type Certification,
 } from '../database/schema/index.js';
 import { MailService } from '../mail/mail.service.js';
+import { findWalletFor } from '../wallets/wallets.queries.js';
+import { WalletsService } from '../wallets/wallets.service.js';
 import {
   checkDocument,
   cleanFileName,
@@ -92,6 +94,7 @@ export class VendorsService {
     private readonly storage: ObjectStorage,
     private readonly box: SecretBox,
     private readonly mail: MailService,
+    private readonly wallets: WalletsService,
   ) {}
 
   /* ---------------- vendor self-service ---------------- */
@@ -348,7 +351,8 @@ export class VendorsService {
 
   /**
    * Approves a pending application. The storefront slug is fixed on first
-   * approval. Phase 2 creates the vendor's custodial wallet here (PRD V4).
+   * approval, and the vendor's custodial wallet is created (PRD V4): the key
+   * now, the sponsored account on chain right after (retried by the sweeper).
    */
   async approve(
     admin: AuthUser,
@@ -374,6 +378,8 @@ export class VendorsService {
         reviewedBy: admin.id,
         approvedAt: current.approvedAt ?? new Date(),
       });
+      if (!(await findWalletFor(tx, id, 'vendor')))
+        await this.wallets.create(tx, 'vendor', id);
       await recordAudit(tx, {
         action: 'vendor.approved',
         actorId: admin.id,
@@ -390,6 +396,8 @@ export class VendorsService {
       return updated;
     });
     void this.notify(vendor, 'approve', dto.note ?? null);
+    const wallet = await findWalletFor(this.database.db, id, 'vendor');
+    if (wallet) await this.wallets.activate(wallet);
     return this.adminDetail(id);
   }
 
