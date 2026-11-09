@@ -157,6 +157,8 @@ export class AuthService {
         await insertVendor(tx, {
           userId: user.id,
           businessName: dto.businessName,
+          // The sign-up phone pre-fills the business phone; the wizard can change it.
+          phone: dto.phone,
         });
       await recordAudit(tx, {
         action: 'auth.register',

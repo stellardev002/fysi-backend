@@ -8,9 +8,11 @@ import {
   completeApplication,
   createPool,
   createTestApp,
+  enableTwoFactor,
   fakeBucket,
   PDF_BYTES,
   registerAdmin,
+  registerUser,
   registerVendor,
   sentSubjects,
   type Session,
@@ -54,6 +56,16 @@ describe('Vendor onboarding and verification (e2e)', () => {
     const submitted = await call('post', '/api/v1/vendor/submit', vendor.accessToken).expect(200);
     expect(submitted.body.data).toMatchObject({ status: 'pending', canEdit: false });
     await call('post', '/api/v1/vendor/submit', vendor.accessToken).expect(409);
+  });
+
+  it('pre-fills the business phone from the sign-up phone', async () => {
+    const vendor = await enableTwoFactor(
+      app,
+      await registerUser(app, 'vendor', { phone: '+2348035550000', businessName: 'Leafy' }),
+    );
+    const profile = await call('get', '/api/v1/vendor/profile', vendor.accessToken).expect(200);
+    expect(profile.body.data).toMatchObject({ phone: '+2348035550000', businessName: 'Leafy' });
+    expect(profile.body.data.missing).not.toContain('phone');
   });
 
   it('encrypts the director NIN/BVN and never returns it', async () => {
