@@ -4,14 +4,14 @@ API for **Fysi**, a marketplace for certified eco-friendly products with payment
 
 **Runs on the Stellar testnet only**: no real money moves, and the app refuses to start with any mainnet setting.
 
-NestJS 12 (Express) + TypeScript, Supabase Postgres via Drizzle, Upstash Redis, Supabase Storage over S3, Resend, the official Stellar SDK. Deployed on Render. The platform layer (config, auth sessions, rate limits, audit log, errors, storage, Stellar helpers) comes from the ChuckSales backend; the marketplace is new.
+NestJS 12 (Express) + TypeScript, Postgres via Drizzle, Redis, S3-compatible storage, Resend, the official Stellar SDK. Deployed on **Railway** (API, Postgres, Redis and a storage bucket in one project; see `railway.json`). The platform layer (config, auth sessions, rate limits, audit log, errors, storage, Stellar helpers) comes from the ChuckSales backend; the marketplace is new.
 
 | Doc | For |
 | --- | --- |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, modules, identity and 2FA |
-| [docs/DATABASE.md](docs/DATABASE.md) | Supabase setup, migrations, RLS, backups |
+| [docs/DATABASE.md](docs/DATABASE.md) | Postgres connections, migrations, backups |
 | [docs/STELLAR.md](docs/STELLAR.md) | Stellar configuration now, and the phase 2 payment design |
-| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Render deployment step by step |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Railway deployment step by step |
 | `/docs` (Swagger UI) and `/docs-json` | Exact API contract, served by the running API |
 
 ## Build status (PRD release plan)

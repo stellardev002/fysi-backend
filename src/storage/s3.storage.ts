@@ -18,7 +18,7 @@ export interface S3Settings {
   downloadTtlSeconds: number;
 }
 
-/** Any S3-compatible store, including Supabase Storage's S3 endpoint. */
+/** Any S3-compatible store: a Railway bucket, Cloudflare R2, AWS S3, Supabase Storage. */
 export class S3ObjectStorage implements ObjectStorage {
   private readonly client: S3Client;
   private readonly logger = new Logger(S3ObjectStorage.name);

@@ -50,6 +50,9 @@ class RedisLifecycle implements OnApplicationBootstrap, OnApplicationShutdown {
           enableOfflineQueue: false,
           maxRetriesPerRequest: 1,
           commandTimeout: 1000,
+          // Resolve IPv4 or IPv6: Railway's private network (*.railway.internal)
+          // can be IPv6-only, and ioredis looks up IPv4 alone by default.
+          family: 0,
         });
         redis.on('error', (err) => logger.error({ err }, 'Redis error'));
         return redis;

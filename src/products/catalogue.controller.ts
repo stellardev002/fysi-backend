@@ -18,7 +18,7 @@ const SUMMARY_EXAMPLE = {
   price: { cents: 1250, usd: '12.50' },
   inStock: true,
   imageUrl:
-    'https://<project>.storage.supabase.co/storage/v1/s3/fysi-media/products/…?X-Amz-Signature=…',
+    'https://<bucket>.t3.storageapi.dev/products/…?X-Amz-Signature=…',
   badge: 'certified',
   certifications: [{ id: 'gots', name: 'GOTS' }],
   category: {
@@ -91,7 +91,7 @@ export class CatalogueController {
       images: [
         {
           id: '0197c2b0-2222-7a2b-b3c4-1d2e3f4a5b6c',
-          url: 'https://<project>.storage.supabase.co/…',
+          url: 'https://<bucket>.t3.storageapi.dev/…',
           position: 0,
         },
       ],

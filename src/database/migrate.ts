@@ -2,7 +2,7 @@ import { resolve } from 'node:path';
 import { runMigrations } from './migrator.js';
 
 // Migrations hold a session-level advisory lock, so they need a session-mode
-// connection: Supabase's session pooler or direct connection, never port 6543.
+// connection (never a transaction pooler such as PgBouncer or Supabase's port 6543).
 const databaseUrl =
   process.env.DATABASE_MIGRATION_URL || process.env.DATABASE_URL;
 if (!databaseUrl) {

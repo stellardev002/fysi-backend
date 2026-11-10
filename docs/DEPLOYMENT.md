@@ -1,114 +1,136 @@
-# Deployment: Render (staging)
+# Deployment: Railway
 
-The API runs on Render's free plan from the Dockerfile, with Supabase Postgres and Upstash Redis. Everything here is free-tier.
+Everything runs in one Railway project: the API (built from the `Dockerfile`), **Postgres**, **Redis** and a **storage bucket** for files. Services talk over Railway's private network, and the API reads their credentials through Railway reference variables, so no secret is copied by hand. The build is **testnet only**.
+
+```
+Railway project "fysi"
+├── fysi-backend   (this repo, Dockerfile)  ← public domain
+├── Postgres       (Railway template)       ─┐
+├── Redis          (Railway template)        ├─ private network
+└── Bucket         (Railway storage bucket) ─┘
+```
 
 ## What the container does
 
-`Dockerfile` builds the app, installs production dependencies only, and starts with:
+`railway.json` builds the `Dockerfile` and health-checks `GET /health`. On every start the container runs:
 
-```
-node dist/database/migrate.js && exec node dist/main.js
-```
+1. `node dist/database/migrate.js`: migrations. A failure exits non-zero and Railway keeps the previous deployment live.
+2. `node scripts/platform-setup.mjs`: opens the settlement account if needed (Friendbot + USDC trustline). Idempotent; a failure is logged and only delays payments (checkout answers 503 until it succeeds).
+3. `node dist/main.js`: the API on Railway's `PORT`, `0.0.0.0`.
 
-- Migrations run first; a failed migration exits non-zero and Render keeps the previous version live.
-- The API listens on Render's `PORT` on `0.0.0.0`.
-- On boot it pings Postgres (5 attempts with back-off) and exits with a clear log line if the database is unreachable. Redis being down only logs a warning.
-- Render's health check calls `GET /health` (Postgres + Redis).
-- Logs are JSON in production.
+The service must stay awake: the payment watcher confirms orders within seconds and the sweeper sends payouts. `railway.json` keeps serverless sleeping off.
 
 ## One-time setup
 
-### 1. Supabase (database)
+### 1. Push the code
 
-Follow "Setting up Supabase" in [DATABASE.md](DATABASE.md). You need the **session pooler** URI (port 5432). Pick **Central EU (Frankfurt)** to sit next to the Render service, or change `region:` in `render.yaml` to match where you put Supabase.
-
-### 2. Upstash (Redis)
-
-1. Sign in at **upstash.com** → **Create Database** (Redis). Region: Frankfurt (`eu-central-1`).
-2. On the database page copy the **`rediss://`** URL (with the password in it). This is `REDIS_URL`.
-
-### 2b. Supabase Storage (product photos, logos, vendor documents)
-
-Covers are stored in Supabase Storage through its S3-compatible API. Without these settings the API still runs; cover uploads answer 503 and `coverImageUrl` is `null`.
-
-1. Supabase dashboard → **Storage** → **New bucket**: name it (e.g. `fysi-media`), **leave "Public bucket" off**. The API hands out short-lived signed links instead.
-2. **Project Settings → Storage → S3 Connection**: copy the **Endpoint** (`https://<project-ref>.storage.supabase.co/storage/v1/s3`) and **Region** (`eu-west-1` for this project).
-3. On the same page, **New access key**: copy the **Access key ID** and **Secret access key** (the secret is shown once).
-4. Put them in `.env` and in Render:
-   | Key | Value |
-   | --- | --- |
-   | `S3_BUCKET` | the bucket name (e.g. `fysi-media`) |
-   | `S3_ENDPOINT` | the endpoint |
-   | `S3_REGION` | the region |
-   | `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | the key pair |
-   | `S3_FORCE_PATH_STYLE` | `true` |
-
-These keys bypass every Supabase security rule ([Supabase docs](https://supabase.com/docs/guides/storage/s3/authentication)): keep them server-side only.
-
-### 3. Local `.env`, migrations and first admin
-
-```powershell
-copy .env.example .env
-node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
+```bash
+git push -u origin main
 ```
 
-Fill `DATABASE_URL` (Supabase session pooler), `REDIS_URL`, `JWT_ACCESS_SECRET` (the output above) and `FRONTEND_URL` (the frontend developer's local URL, e.g. `http://localhost:3000`). Then:
+### 2. Create the project and its services
 
-```powershell
-pnpm install
-pnpm build
-pnpm db:migrate
-pnpm admin:create --email you@example.com --name "Your Name"
+On **railway.com** → **New Project**:
+
+1. **Deploy from GitHub repo** → `fysi-backend`. Railway reads `railway.json`. The first deploy fails until the variables below are set; that is expected.
+2. **+ Create → Database → PostgreSQL** (service name `Postgres`).
+3. **+ Create → Database → Redis** (service name `Redis`).
+4. **+ Create → Bucket** (service name `Bucket`). Open its **Credentials** tab and note whether it says *virtual-hosted* or *path* style (new buckets are virtual-hosted).
+
+Keep all four in one region close to your users.
+
+### 3. Variables on `fysi-backend`
+
+Service → **Variables** → **Raw Editor**, paste and fill the three marked lines:
+
+```
+NODE_ENV=production
+APP_NAME=fysi
+LOG_LEVEL=info
+TRUST_PROXY_HOPS=1
+SWAGGER_ENABLED=true
+
+DATABASE_URL=${{Postgres.DATABASE_URL}}
+DB_POOL_MAX=5
+REDIS_URL=${{Redis.REDIS_URL}}
+
+JWT_ACCESS_SECRET=          # fill: node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
+DATA_ENCRYPTION_KEY=        # fill: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"  — keep a copy!
+FRONTEND_URL=               # fill: the web app's address, e.g. https://fysi.ng (http://localhost:3000 for now)
+CORS_ORIGINS=
+
+S3_BUCKET=${{Bucket.BUCKET}}
+S3_ENDPOINT=${{Bucket.ENDPOINT}}
+S3_REGION=${{Bucket.REGION}}
+S3_ACCESS_KEY_ID=${{Bucket.ACCESS_KEY_ID}}
+S3_SECRET_ACCESS_KEY=${{Bucket.SECRET_ACCESS_KEY}}
+S3_FORCE_PATH_STYLE=false   # true only if the bucket's Credentials tab says path style
+
+STELLAR_NETWORK=testnet
+STELLAR_ASSETS=USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5
+WALLET_PROVIDER=local
+MFA_REQUIRED_ROLES=vendor,admin,super_admin
+
+# No email provider yet: codes go to the deploy logs. Replace with RESEND_API_KEY + MAIL_FROM.
+MAIL_CONSOLE_IN_PRODUCTION=true
 ```
 
-The last command prints a temporary password once; save it. Because your laptop and Render share the Supabase database, this admin works on the hosted API too.
+- `${{Service.VAR}}` are Railway reference variables: they stay in sync if Railway rotates a password. If you named a service differently, use its name.
+- `DATABASE_URL` and `REDIS_URL` use the private network (`*.railway.internal`). The Redis client resolves IPv4 and IPv6, which Railway's private network needs.
+- **`DATA_ENCRYPTION_KEY`**: store it in a password manager. Losing it makes every 2FA secret, director ID and testnet custodial key unreadable.
+- Use the bucket's `BUCKET` value, not `RAILWAY_BUCKET_NAME` (Railway documents that one as not the S3 name).
 
-Check it locally: `pnpm start:dev`, then open http://localhost:4000/docs and http://localhost:4000/health.
+### 4. Public domain
 
-### 4. Render
+`fysi-backend` → **Settings → Networking → Generate Domain**. Railway's edge proxy forwards the client IP, hence `TRUST_PROXY_HOPS=1`.
 
-1. Push the repository to GitHub (you do this).
-2. Sign in at **render.com** with GitHub → **New → Blueprint** → select the `fysi-backend` repository. Render reads `render.yaml`.
-3. Fill the values it asks for:
-   | Key | Value |
-   | --- | --- |
-   | `DATABASE_URL` | Supabase session pooler URI |
-   | `REDIS_URL` | Upstash `rediss://` URL |
-   | `FRONTEND_URL` | The frontend's main address (`http://localhost:3000` until it is deployed) |
-   | `CORS_ORIGINS` | Extra origins, comma-separated. Frontend monorepo locally: `http://localhost:3001,http://localhost:3002` (3000 comes from `FRONTEND_URL`) |
-   | `DATA_ENCRYPTION_KEY` | 32 random bytes, base64 (`node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`). Keep a copy in your password manager: without it, 2FA secrets and director IDs cannot be read |
-   `JWT_ACCESS_SECRET` is generated by Render. The rest come from `render.yaml`.
-4. **Apply**. The first build takes 5 to 10 minutes.
+Saving variables redeploys. Watch **Deployments → Logs** for `Migrations applied` and `Settlement account ready: G…`.
 
-### 5. Verify
+### 5. First super admin
 
-Replace the host with the one Render shows:
+Railway CLI (`npm i -g @railway/cli`, `railway login`, `railway link` in this folder):
 
-- `https://<service>.onrender.com/health` → `"status":"ok"` with database and redis `up`.
-- `https://<service>.onrender.com/docs` → Swagger UI.
-- `https://<service>.onrender.com/api/v1/stellar/network` → `"network":"testnet"`.
-- In Swagger: `POST /api/v1/auth/login` with your admin email and password → tokens with `"role":"admin"`.
+```bash
+railway ssh
+ADMIN_PASSWORD='a-long-password' node scripts/create-admin.mjs --email you@fysi.ng --name "Your Name"
+```
 
-Then send the frontend developer the base URL, the Swagger link and three files: [API.md](API.md), [openapi.json](openapi.json) and [frontend/api-client.ts](frontend/api-client.ts). Section 1 of API.md holds the staging host.
+Or from your laptop against the database's **public** URL (Postgres → **Connect** → *Public network*, `DATABASE_PUBLIC_URL`):
+
+```bash
+DATABASE_URL='<public postgres url>' ADMIN_PASSWORD='a-long-password' pnpm admin:create --email you@fysi.ng --name "Your Name"
+```
+
+Sign in and turn on 2FA straight away; rotate that password after the first login.
+
+### 6. Verify
+
+- `https://<domain>/health` → `"status":"ok"`, database and redis `up`.
+- `https://<domain>/api/v1/stellar/network` → `"network":"testnet"`.
+- `https://<domain>/docs` → Swagger UI.
+- Sign in as the super admin in Swagger (`POST /api/v1/auth/login`), set up 2FA, then approve a test vendor: its wallet should become `active` within seconds (`GET /api/v1/vendor/wallet`).
+- Test payments with USDC from **faucet.circle.com** (Stellar testnet) in a Freighter or LOBSTR wallet switched to testnet.
 
 ## Day to day
 
-- **Deploys**: every push to `main` redeploys automatically (migrations included).
-- **Logs**: Render → service → **Logs**. On staging, verification codes appear here (search `verification code`) because `MAIL_CONSOLE_IN_PRODUCTION=true`.
-- **Env changes**: Render → service → **Environment**; saving restarts the service.
-- **Sleeping**: the free instance sleeps after ~15 idle minutes; the next request takes up to a minute.
-- **Dependencies**: `pnpm audit:deps` (also run in CI) fails on high or critical advisories in production dependencies.
-- **Email check**: `pnpm mail:test you@example.com` sends one of every email (codes, decisions, notices) through Resend using `.env`. With the test sender `onboarding@resend.dev`, only the Resend account owner's address receives mail.
-- **Staging email with Resend test sender**: set `RESEND_API_KEY`, `MAIL_FROM=Fysi <onboarding@resend.dev>` and `MAIL_REDIRECT_TO=<the Resend account owner email>`. Every email then lands in that inbox, subject prefixed `[to <real recipient>]`, so any address can register.
-- **First super admin**: in the Render shell, `ADMIN_PASSWORD='…' pnpm admin:create --email you@fysi.ng --name "Your Name"`; sign in and turn on 2FA straight away.
-- **Supabase pause**: free projects pause after 7 idle days; unpause in the Supabase dashboard.
+- **Deploys**: every push to `main` redeploys (migrations and settlement check included).
+- **Logs**: service → **Deployments → Logs**. With `MAIL_CONSOLE_IN_PRODUCTION=true`, search `code is` to find sign-up and withdrawal codes.
+- **Variables**: saving restarts the service.
+- **Database from your laptop**: use `DATABASE_PUBLIC_URL` (Postgres service → Connect). The private URL only works inside Railway.
+- **Backups**: Postgres service → **Backups** (plan-dependent), and take a `pg_dump` before risky migrations (see DATABASE.md).
+- **Email check**: `pnpm mail:test you@example.com` sends one of every email through Resend using `.env`.
+- **Staging email with Resend's test sender**: `RESEND_API_KEY`, `MAIL_FROM=Fysi <onboarding@resend.dev>`, `MAIL_REDIRECT_TO=<the Resend account owner>`; every email lands in that inbox, subject prefixed `[to <real recipient>]`.
+- **Dependencies**: `pnpm audit:deps` (also in CI).
 
-## Before launch (checklist)
+## Costs
+
+Railway bills usage: the always-on API, Postgres and Redis on the Hobby plan, plus bucket storage per GB. Bucket API calls and bucket egress are free, and files reach browsers straight from the bucket through signed links, so photos do not load the API.
+
+## Before real users (checklist)
 
 - [ ] Real email: verify a domain in Resend, set `RESEND_API_KEY` and `MAIL_FROM`, set `MAIL_CONSOLE_IN_PRODUCTION=false`, clear `MAIL_REDIRECT_TO`.
-- [ ] Always-on instance (Render Starter or Railway Hobby): the phase 5 reconciliation worker cannot sleep.
 - [ ] `FRONTEND_URL` / `CORS_ORIGINS` list only the real frontend domains.
 - [ ] Decide whether Swagger stays public (`SWAGGER_ENABLED`).
-- [ ] `STELLAR_PLATFORM_SECRET` set from a dedicated, unfunded-beyond-reserve account.
-- [ ] Testnet only: `STELLAR_NETWORK=testnet` with Circle's testnet USDC issuer. Mainnet is not supported by this build; moving to it is a code change after the security review and legal sign-off.
-- [ ] Supabase plan with backups you have checked, and a `pg_dump` taken.
+- [ ] `DATA_ENCRYPTION_KEY` and `JWT_ACCESS_SECRET` stored in a password manager.
+- [ ] Postgres backups enabled and a `pg_dump` taken.
+- [ ] Testnet only: `STELLAR_NETWORK=testnet` with Circle's testnet USDC issuer. Mainnet is not supported by this build.

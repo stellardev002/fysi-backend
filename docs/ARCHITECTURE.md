@@ -9,17 +9,16 @@ Next.js frontend (separate repo)
 NestJS API  /api/v1 ──────────────► Stellar (Horizon): USDC payments, custodial wallets
    │        │        │
    ▼        ▼        ▼
-Supabase  Upstash  Supabase Storage (S3)
-Postgres  Redis    photos, logos, KYB documents
-(Drizzle) (rate limits)
+Postgres  Redis          Bucket (S3 API)        all on Railway
+(Drizzle) (rate limits)  photos, logos, KYB documents
 ```
 
 | Piece | Hosting | Role |
 | --- | --- | --- |
-| NestJS API (this repo) | Render (Docker) | All business logic, authorization, verification workflow |
-| Postgres | Supabase (session pooler) | Accounts, vendors, products, carts, audit log |
-| Redis | Upstash | Token-bucket rate limiting (fails open if Redis is down) |
-| Object storage | Supabase Storage over S3, private bucket | Product photos, logos, avatars, vendor documents; served by short-lived signed links |
+| NestJS API (this repo) | Railway (Dockerfile, always on) | All business logic, authorization, verification workflow, payment watcher |
+| Postgres | Railway Postgres (private network) | Accounts, vendors, products, orders, payments, audit log |
+| Redis | Railway Redis (private network) | Token-bucket rate limiting (fails open if Redis is down) |
+| Object storage | Railway storage bucket (S3 API, private) | Product photos, logos, avatars, vendor documents; served by short-lived signed links |
 | Email | Resend (console in dev/staging) | Codes, admin invites, vendor decisions |
 | Stellar | SDF Horizon | Settlement account, custodial wallets, payment watcher, payouts (see STELLAR.md) |
 
@@ -97,8 +96,8 @@ drizzle/        SQL migrations (generated + hand-written)
 test/           e2e tests (real Postgres and Redis; fake mailer, storage and ledger)
 scripts/        create-admin, mail-test, stellar-smoke, export-openapi
 docs/           this documentation
-Dockerfile      build → migrate → start
-render.yaml     Render Blueprint
+Dockerfile      build → migrate → settlement setup → start
+railway.json    Railway build and deploy settings
 ```
 
 ## Order lifecycle

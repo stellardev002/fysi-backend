@@ -66,7 +66,7 @@ export const PROFILE_EXAMPLE = {
       fileName: 'cac-certificate.pdf',
       contentType: 'application/pdf',
       sizeBytes: 284113,
-      url: 'https://<project>.storage.supabase.co/storage/v1/s3/fysi-media/vendors/…?X-Amz-Signature=…',
+      url: 'https://<bucket>.t3.storageapi.dev/vendors/…?X-Amz-Signature=…',
       createdAt: '2026-11-07T09:30:00.000Z',
     },
   ],

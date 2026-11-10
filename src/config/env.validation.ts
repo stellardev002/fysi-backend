@@ -56,7 +56,7 @@ export class EnvVars {
   @IsEnum(LogLevel)
   LOG_LEVEL: LogLevel = LogLevel.Info;
 
-  /** Runtime connection. On Supabase use the session pooler (port 5432); see docs/DATABASE.md. */
+  /** Runtime connection: a direct (session) Postgres connection, never a transaction pooler; see docs/DATABASE.md. */
   @IsString()
   @IsNotEmpty()
   @Matches(/^postgres(ql)?:\/\/\S+$/, {
@@ -68,7 +68,7 @@ export class EnvVars {
   @IsString()
   DATABASE_MIGRATION_URL = '';
 
-  /** Kept small: Supabase's free session pooler caps client connections. */
+  /** Connections per API instance. */
   @Type(() => Number)
   @IsInt()
   @Min(1)
@@ -136,14 +136,14 @@ export class EnvVars {
   @IsBoolean()
   MAIL_CONSOLE_IN_PRODUCTION = false;
 
-  /** S3-compatible bucket (Supabase Storage works). Empty disables image upload and display. */
+  /** S3-compatible bucket (Railway bucket, R2, S3…). Empty disables uploads and file links. */
   @IsString()
   S3_BUCKET = '';
 
   @IsString()
   @Matches(/^(https?:\/\/\S+)?$/, {
     message:
-      'S3_ENDPOINT must be empty or an https:// URL (the Supabase S3 endpoint), not a key',
+      'S3_ENDPOINT must be empty or an https:// URL (the bucket endpoint), not a key',
   })
   S3_ENDPOINT = '';
 
@@ -156,7 +156,7 @@ export class EnvVars {
   @IsString()
   S3_SECRET_ACCESS_KEY = '';
 
-  /** Supabase Storage needs path-style URLs (true). */
+  /** Path-style bucket URLs. Railway buckets: false unless their Credentials tab says path style. */
   @Transform(toBoolean)
   @IsBoolean()
   S3_FORCE_PATH_STYLE = false;
@@ -302,7 +302,7 @@ export class EnvVars {
   @Min(0)
   CUSTOMER_TIER1_CAP_CENTS = 20_000;
 
-  /** Number of reverse proxies in front of the app (Render = 1). */
+  /** Number of reverse proxies in front of the app (Railway = 1). */
   @Type(() => Number)
   @IsInt()
   @Min(0)
@@ -330,7 +330,7 @@ export function validateEnv(raw: Record<string, unknown>): EnvVars {
     const lines = errors.map(
       (e) => `${e.property}: ${Object.values(e.constraints ?? {}).join(', ')}`,
     );
-    // One line: hosts like Render show each log line separately.
+    // One line: hosts like Railway show each log line separately.
     throw new Error(`Invalid environment: ${lines.join(' | ')}`);
   }
   return env;
