@@ -58,6 +58,16 @@ describe('validateEnv', () => {
     expect(validateEnv({ ...base, MFA_REQUIRED_ROLES: '' }).MFA_REQUIRED_ROLES).toBe('');
   });
 
+  it('reads booleans with stray spaces or capitals', () => {
+    const env = (v: string) =>
+      validateEnv({ ...base, MAIL_CONSOLE_IN_PRODUCTION: v })
+        .MAIL_CONSOLE_IN_PRODUCTION;
+    expect(env(' true ')).toBe(true);
+    expect(env('TRUE')).toBe(true);
+    expect(env('1')).toBe(true);
+    expect(env('no')).toBe(false);
+  });
+
   it('accepts only the Stellar testnet', () => {
     expect(validateEnv(base).STELLAR_NETWORK).toBe('testnet');
     expect(() => validateEnv({ ...base, STELLAR_NETWORK: 'mainnet' })).toThrow(

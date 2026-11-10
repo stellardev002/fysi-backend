@@ -35,8 +35,11 @@ export enum StellarNetwork {
   Testnet = 'testnet',
 }
 
+/** `true`, `TRUE`, ` true ` and `1` all count (hosting dashboards add stray spaces). */
 const toBoolean = ({ value }: { value: unknown }) =>
-  value === true || value === 'true';
+  value === true ||
+  (typeof value === 'string' &&
+    ['true', '1'].includes(value.trim().toLowerCase()));
 
 export class EnvVars {
   @IsEnum(NodeEnv)
