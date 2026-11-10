@@ -54,8 +54,10 @@ DATABASE_URL=${{Postgres.DATABASE_URL}}
 DB_POOL_MAX=5
 REDIS_URL=${{Redis.REDIS_URL}}
 
-JWT_ACCESS_SECRET=          # fill: node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
-DATA_ENCRYPTION_KEY=        # fill: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"  — keep a copy!
+JWT_ACCESS_SECRET= hhGPF2VJL2uymnXcaSg7EPdKWmeQcv0Q1jpu12jX9ck+jdG1vYR7LZLYVDiHwcdn          
+# fill: node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
+DATA_ENCRYPTION_KEY= cx6cYdVZXqCpeuBhlkMlebTKM4sK6IMQWgFzGMWcGEc=        
+# fill: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"  — keep a copy!
 FRONTEND_URL=               # fill: the web app's address, e.g. https://fysi.ng (http://localhost:3000 for now)
 CORS_ORIGINS=
 
