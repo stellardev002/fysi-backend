@@ -326,6 +326,14 @@ export class EnvVars {
   RATE_LIMIT_REFILL_PER_SEC = 1;
 }
 
+/**
+ * The environment as the process received it, before validation fills in
+ * defaults (Nest's ConfigModule writes those back into process.env). Used to
+ * tell "not set" apart from "set to something unexpected" in startup errors.
+ */
+export const RECEIVED_ENV: Readonly<Record<string, string | undefined>> =
+  Object.freeze({ ...process.env });
+
 export function validateEnv(raw: Record<string, unknown>): EnvVars {
   const env = plainToInstance(EnvVars, raw, { exposeDefaultValues: true });
   const errors = validateSync(env, { whitelist: false });
