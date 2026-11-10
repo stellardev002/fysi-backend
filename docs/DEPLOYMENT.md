@@ -41,7 +41,7 @@ Keep all four in one region close to your users.
 
 ### 3. Variables on `fysi-backend`
 
-Service → **Variables** → **Raw Editor**, paste and fill the three marked lines:
+Service → **Variables** → **Raw Editor**, paste this block:
 
 ```
 NODE_ENV=production
@@ -54,11 +54,9 @@ DATABASE_URL=${{Postgres.DATABASE_URL}}
 DB_POOL_MAX=5
 REDIS_URL=${{Redis.REDIS_URL}}
 
-JWT_ACCESS_SECRET= hhGPF2VJL2uymnXcaSg7EPdKWmeQcv0Q1jpu12jX9ck+jdG1vYR7LZLYVDiHwcdn          
-# fill: node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"
-DATA_ENCRYPTION_KEY= cx6cYdVZXqCpeuBhlkMlebTKM4sK6IMQWgFzGMWcGEc=        
-# fill: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"  — keep a copy!
-FRONTEND_URL=               # fill: the web app's address, e.g. https://fysi.ng (http://localhost:3000 for now)
+JWT_ACCESS_SECRET=
+DATA_ENCRYPTION_KEY=
+FRONTEND_URL=
 CORS_ORIGINS=
 
 S3_BUCKET=${{Bucket.BUCKET}}
@@ -66,16 +64,26 @@ S3_ENDPOINT=${{Bucket.ENDPOINT}}
 S3_REGION=${{Bucket.REGION}}
 S3_ACCESS_KEY_ID=${{Bucket.ACCESS_KEY_ID}}
 S3_SECRET_ACCESS_KEY=${{Bucket.SECRET_ACCESS_KEY}}
-S3_FORCE_PATH_STYLE=false   # true only if the bucket's Credentials tab says path style
+S3_FORCE_PATH_STYLE=false
 
 STELLAR_NETWORK=testnet
 STELLAR_ASSETS=USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5
 WALLET_PROVIDER=local
 MFA_REQUIRED_ROLES=vendor,admin,super_admin
 
-# No email provider yet: codes go to the deploy logs. Replace with RESEND_API_KEY + MAIL_FROM.
 MAIL_CONSOLE_IN_PRODUCTION=true
 ```
+
+Fill the three empty values **in Railway only**. Never write real values into this file or anything else in the repository: it is public.
+
+| Variable | Value |
+| --- | --- |
+| `JWT_ACCESS_SECRET` | Output of `node -e "console.log(require('crypto').randomBytes(48).toString('base64'))"` |
+| `DATA_ENCRYPTION_KEY` | Output of `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`. **Keep a copy in a password manager** |
+| `FRONTEND_URL` | The web app's address, e.g. `https://fysi.ng` (`http://localhost:3000` until it is deployed) |
+
+- `MAIL_CONSOLE_IN_PRODUCTION=true` writes emails (sign-up codes included) to the deploy logs while there is no email provider. Without it, or `RESEND_API_KEY` + `MAIL_FROM`, the API refuses to start.
+- `S3_FORCE_PATH_STYLE=true` only if the bucket's Credentials tab says path style.
 
 - `${{Service.VAR}}` are Railway reference variables: they stay in sync if Railway rotates a password. If you named a service differently, use its name.
 - `DATABASE_URL` and `REDIS_URL` use the private network (`*.railway.internal`). The Redis client resolves IPv4 and IPv6, which Railway's private network needs.
