@@ -59,12 +59,12 @@ Postgres  Redis          Bucket (S3 API)        all on Railway
 | Who | Sign-in | Second factor | Session |
 | --- | --- | --- | --- |
 | Customer | Email + password (argon2), email verified by code | Optional TOTP | Refresh token valid `REFRESH_TOKEN_TTL_DAYS` from the last refresh |
-| Vendor | Same | **Required** TOTP | Same |
-| Admin, super admin | Same; created by a super admin or `pnpm admin:create` | **Required** TOTP | Idle timeout `ADMIN_SESSION_IDLE_MINUTES` |
+| Vendor | Same | Optional TOTP | Same |
+| Admin, super admin | Same; created by a super admin or `pnpm admin:create` | Optional TOTP | Idle timeout `ADMIN_SESSION_IDLE_MINUTES` |
 
 - Access JWTs (15 min, HS256) carry `role`, the session family and `mfa`. Every request checks the session row, so logout, password reset, 2FA changes and suspension take effect immediately.
 - With 2FA on, `POST /auth/login` returns a 5-minute `mfaToken`; `POST /auth/login/2fa` exchanges it and a code for tokens. Each 30-second code works once per account; a password change voids pending `mfaToken`s.
-- Turning 2FA on revokes every session and returns a fresh, 2FA-verified pair. Vendors and admins without 2FA can reach only `/auth/me`, `/auth/2fa/*` and sign-out (403 `Turn on two-factor sign-in to continue`).
+- Turning 2FA on revokes every session and returns a fresh, 2FA-verified pair. Access is by role. `MFA_REQUIRED_ROLES` (empty by default) can make 2FA mandatory for chosen roles again: those sessions then reach only `/auth/me`, `/auth/2fa/*` and sign-out until it is on (403 `Turn on two-factor sign-in to continue`).
 - TOTP secrets and directors' NIN/BVN are encrypted with `DATA_ENCRYPTION_KEY`, bound to their row; the API never returns them (NIN/BVN: last 4 digits only).
 
 ## Vendor lifecycle (PRD V1–V3, A1)

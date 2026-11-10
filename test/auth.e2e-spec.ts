@@ -70,18 +70,19 @@ describe('Auth (e2e)', () => {
     expect(res.body.message).toBe('Email not verified');
   });
 
-  it('gives a new vendor a draft business and blocks everything until 2FA is on', async () => {
+  it('gives a new vendor a draft business and lets it in without 2FA (role-based access)', async () => {
     const vendor = await registerUser(app, 'vendor', { businessName: 'Green Weaves' });
     const me = await call('get', '/api/v1/auth/me', vendor.accessToken).expect(200);
     expect(me.body.data).toMatchObject({
       role: 'vendor',
-      twoFactorRequired: true,
+      twoFactorRequired: false,
       twoFactorEnabled: false,
       vendor: { status: 'draft', businessName: 'Green Weaves', slug: null },
     });
-    const blocked = await call('get', '/api/v1/vendor/profile', vendor.accessToken).expect(403);
-    expect(blocked.body.message).toBe('Turn on two-factor sign-in to continue');
-    await call('patch', '/api/v1/auth/me', vendor.accessToken).send({ name: 'A' }).expect(403);
+    await call('get', '/api/v1/vendor/profile', vendor.accessToken).expect(200);
+    // Roles still apply: a vendor is not a customer or an admin.
+    await call('get', '/api/v1/cart', vendor.accessToken).expect(403);
+    await call('get', '/api/v1/admin/users', vendor.accessToken).expect(403);
 
     const withMfa = await enableTwoFactor(app, vendor);
     // Enabling revokes the old session, including this access token.
@@ -132,7 +133,7 @@ describe('Auth (e2e)', () => {
     expect(rows[0].totp_secret).not.toContain(vendor.totpSecret);
   });
 
-  it('lets customers opt into 2FA and out again; vendors cannot opt out', async () => {
+  it('lets any role opt into 2FA and out again', async () => {
     const customer = await enableTwoFactor(app, await registerCustomer(app));
     await call('post', '/api/v1/auth/2fa/disable', customer.accessToken)
       .send({ password: 'wrong-password', code: '000000' })
@@ -146,10 +147,9 @@ describe('Auth (e2e)', () => {
     expect(login.body.data.mfaRequired).toBe(false);
 
     const vendor = await registerVendor(app);
-    const res = await call('post', '/api/v1/auth/2fa/disable', vendor.accessToken)
-      .send({ password: PASSWORD, code: '123456' })
-      .expect(403);
-    expect(res.body.message).toBe('Two-factor sign-in is required for your account type');
+    await call('post', '/api/v1/auth/2fa/disable', vendor.accessToken)
+      .send({ password: PASSWORD, code: freshTotp(vendor.totpSecret!) })
+      .expect(200);
   });
 
   it('rotates refresh tokens and revokes the session on reuse', async () => {

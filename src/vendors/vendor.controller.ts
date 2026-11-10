@@ -22,7 +22,6 @@ import {
 } from '@nestjs/swagger';
 import type { AuthUser } from '../auth/auth-user.js';
 import { CurrentUser } from '../auth/decorators.js';
-import { MFA_SETUP_REQUIRED } from '../auth/jwt-auth.guard.js';
 import { Roles } from '../authorization/roles.decorator.js';
 import { ApiRoute } from '../common/api-docs.js';
 import { CERTIFICATIONS, vendorDocumentKindEnum } from '../database/schema/index.js';
@@ -79,8 +78,7 @@ const VENDOR_ERRORS = [
   HttpStatus.UNAUTHORIZED,
   {
     status: HttpStatus.FORBIDDEN,
-    description:
-      `Not a vendor account, or 2FA is not set up yet (\`${MFA_SETUP_REQUIRED}\`).`,
+    description: 'Not a vendor account.',
   },
 ];
 

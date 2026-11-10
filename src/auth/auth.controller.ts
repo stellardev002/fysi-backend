@@ -71,7 +71,7 @@ const MFA_TOKENS_EXAMPLE = {
 const MFA_SETUP_FORBIDDEN = {
   status: HttpStatus.FORBIDDEN,
   description:
-    'A vendor or admin session without 2FA set up. Send the user to 2FA setup.',
+    'Only when MFA_REQUIRED_ROLES lists the caller’s role and 2FA is not on yet (off by default).',
   message: MFA_SETUP_REQUIRED,
 };
 
@@ -85,7 +85,7 @@ const ME_EXAMPLE = {
   phone: '+2348031234567',
   avatarUrl: null,
   twoFactorEnabled: true,
-  twoFactorRequired: true,
+  twoFactorRequired: false,
   vendor: {
     status: 'pending',
     businessName: 'EcoThreads Lagos',

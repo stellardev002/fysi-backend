@@ -12,7 +12,7 @@ process.env.JWT_ACCESS_SECRET ??= 'e2e-secret-e2e-secret-e2e-secret-e2e';
 process.env.CORS_ORIGINS = 'http://localhost:5173';
 process.env.FRONTEND_URL = 'https://fysi.test/';
 process.env.DATA_ENCRYPTION_KEY = Buffer.alloc(32, 9).toString('base64');
-process.env.MFA_REQUIRED_ROLES = 'vendor,admin,super_admin';
+process.env.MFA_REQUIRED_ROLES = '';
 process.env.STELLAR_NETWORK = 'testnet';
 process.env.STELLAR_ASSETS =
   'USDC:GDVEU3DD4KOFECV66VIHWEZOYX4ZKR3WV27L464SIIPOU2IUI3JCZA57';

@@ -69,7 +69,7 @@ S3_FORCE_PATH_STYLE=false
 STELLAR_NETWORK=testnet
 STELLAR_ASSETS=USDC:GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5
 WALLET_PROVIDER=local
-MFA_REQUIRED_ROLES=vendor,admin,super_admin
+MFA_REQUIRED_ROLES=
 
 MAIL_CONSOLE_IN_PRODUCTION=true
 ```
@@ -111,14 +111,14 @@ Or from your laptop against the database's **public** URL (Postgres → **Connec
 DATABASE_URL='<public postgres url>' ADMIN_PASSWORD='a-long-password' pnpm admin:create --email you@fysi.ng --name "Your Name"
 ```
 
-Sign in and turn on 2FA straight away; rotate that password after the first login.
+Sign in and rotate that password after the first login. Two-factor sign-in is optional (`MFA_REQUIRED_ROLES` is empty).
 
 ### 6. Verify
 
 - `https://<domain>/health` → `"status":"ok"`, database and redis `up`.
 - `https://<domain>/api/v1/stellar/network` → `"network":"testnet"`.
 - `https://<domain>/docs` → Swagger UI.
-- Sign in as the super admin in Swagger (`POST /api/v1/auth/login`), set up 2FA, then approve a test vendor: its wallet should become `active` within seconds (`GET /api/v1/vendor/wallet`).
+- Sign in as the super admin in Swagger (`POST /api/v1/auth/login`), then approve a test vendor: its wallet should become `active` within seconds (`GET /api/v1/vendor/wallet`).
 - Test payments with USDC from **faucet.circle.com** (Stellar testnet) in a Freighter or LOBSTR wallet switched to testnet.
 
 ## Day to day

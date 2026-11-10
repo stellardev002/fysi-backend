@@ -78,7 +78,7 @@ function setupSwagger(app: INestApplication, appName: string): void {
           '',
           '**Sign-up and sign-in.** `POST /api/v1/auth/register` (`accountType` customer or vendor), confirm the emailed code at `POST /api/v1/auth/verify-email` to get tokens, then send `Authorization: Bearer <accessToken>`. Refresh tokens are single use: swap them at `POST /api/v1/auth/refresh`.',
           '',
-          '**Two-factor sign-in.** Vendors and admins must turn on an authenticator app (`/auth/2fa/setup` then `/auth/2fa/enable`); until then every other route answers 403 `Turn on two-factor sign-in to continue`. With 2FA on, `POST /auth/login` returns an `mfaToken` to finish at `POST /auth/login/2fa`.',
+          '**Access.** Routes are protected by role (customer, vendor, admin, super admin) from the access token. Two-factor sign-in is optional: anyone can turn on an authenticator app (`/auth/2fa/setup` then `/auth/2fa/enable`), and then `POST /auth/login` returns an `mfaToken` to finish at `POST /auth/login/2fa`.',
           '',
           '**Admins.** No sign-up: the first super admin is created on the server with `pnpm admin:create`; super admins add admins with `POST /api/v1/admin/users`. Admin sessions idle out after `ADMIN_SESSION_IDLE_MINUTES`. Every admin action goes to the append-only audit log (`GET /api/v1/audit-logs`).',
           '',

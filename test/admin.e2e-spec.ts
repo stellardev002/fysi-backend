@@ -52,14 +52,14 @@ describe('Admin console and roles (e2e)', () => {
     await call(method, path, admin.accessToken).expect(200);
   });
 
-  it('requires 2FA before an admin can use the console', async () => {
+  it('lets an admin use the console with a password; 2FA stays optional', async () => {
     const fresh = await registerCustomer(app);
     await pool.query(`UPDATE users SET role = 'admin' WHERE id = $1`, [fresh.userId]);
     const login = await call('post', '/api/v1/auth/login')
       .send({ email: fresh.email, password: PASSWORD })
       .expect(200);
-    expect(login.body.data.twoFactorSetupRequired).toBe(true);
-    await call('get', '/api/v1/admin/users', login.body.data.accessToken).expect(403);
+    expect(login.body.data.twoFactorSetupRequired).toBe(false);
+    await call('get', '/api/v1/admin/users', login.body.data.accessToken).expect(200);
     const withMfa = await enableTwoFactor(app, {
       ...fresh,
       accessToken: login.body.data.accessToken,
@@ -82,7 +82,9 @@ describe('Admin console and roles (e2e)', () => {
     const login = await call('post', '/api/v1/auth/login')
       .send({ email, password: 'her-own-strong-password' })
       .expect(200);
-    expect(login.body.data).toMatchObject({ role: 'admin', twoFactorSetupRequired: true });
+    expect(login.body.data).toMatchObject({ role: 'admin', twoFactorSetupRequired: false });
+    // Role-based access: the new admin reaches the console with a password alone.
+    await call('get', '/api/v1/admin/users', login.body.data.accessToken).expect(200);
   });
 
   it('suspends and restores accounts, with the staff hierarchy', async () => {
@@ -119,7 +121,7 @@ describe('Admin console and roles (e2e)', () => {
     const login = await call('post', '/api/v1/auth/login')
       .send({ email: vendor.email, password: PASSWORD })
       .expect(200);
-    expect(login.body.data).toMatchObject({ mfaRequired: false, twoFactorSetupRequired: true });
+    expect(login.body.data).toMatchObject({ mfaRequired: false, twoFactorSetupRequired: false });
   });
 
   it('records admin actions in the audit log', async () => {

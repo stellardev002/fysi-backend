@@ -18,7 +18,7 @@ NestJS 12 (Express) + TypeScript, Postgres via Drizzle, Redis, S3-compatible sto
 
 | Step | Scope | Status |
 | --- | --- | --- |
-| 1. Foundation | Auth (customers, vendors, admins, super admins; TOTP 2FA required for vendors and admins; admin idle timeout), vendor onboarding wizard with KYB documents, admin verification queue, product listings with photos and certifications, public catalogue with search and filters, store pages, guest cart pricing and merge at sign-up, product moderation, US dollar prices (1:1 with USDC) | **Done** |
+| 1. Foundation | Auth (customers, vendors, admins, super admins; optional TOTP 2FA; role-based access; admin idle timeout), vendor onboarding wizard with KYB documents, admin verification queue, product listings with photos and certifications, public catalogue with search and filters, store pages, guest cart pricing and merge at sign-up, product moderation, US dollar prices (1:1 with USDC) | **Done** |
 | 2. Wallets and payments (testnet) | Custody provider interface (encrypted local keys on testnet), sponsored custodial wallets for vendors (on approval) and customers (opt-in, PIN), settlement account, checkout with stock hold and multi-vendor split, four payment methods (external wallet, Fysi wallet, SEP-7 QR, payment link), payment watcher with replay, under/overpaid and unmatched handling, escrow with commission, confirm delivery, problem reports, automatic release, payouts, vendor withdrawals (password + email code, daily limit), admin refunds, transaction monitor, dashboard, order emails | **Done** |
 | 3. Pilot | Security review, legal sign-off, SEP-24 NGN anchor, MPC custody | Later (mainnet is not part of this build) |
 
@@ -39,7 +39,7 @@ pnpm start:dev
 - Swagger UI: `http://localhost:4000/docs` (when `SWAGGER_ENABLED=true`)
 - Health: `http://localhost:4000/health`
 
-Without `RESEND_API_KEY`, emails (and their 6-digit codes) are printed in the terminal. Sign in as the super admin and turn on 2FA with any authenticator app (Google Authenticator, 1Password, Authy) before using the admin routes.
+Without `RESEND_API_KEY`, emails (and their 6-digit codes) are printed in the terminal. Sign in as the super admin to use the admin routes (2FA is optional).
 
 ### E2E tests with Docker
 
@@ -67,4 +67,4 @@ DATABASE_URL=postgres://postgres:postgres@localhost:55432/test REDIS_URL=redis:/
 
 ## Admins
 
-Nobody signs up as an admin. The first **super admin** is created on the server with `pnpm admin:create` (without `ADMIN_PASSWORD` a random password is printed once). Super admins add admins with `POST /api/v1/admin/users`; the new admin gets a password setup code by email, picks a password at `POST /api/v1/auth/reset-password`, then must turn on 2FA. Admins verify vendors, moderate products and manage customers and vendors; only super admins manage other admins.
+Nobody signs up as an admin. The first **super admin** is created on the server with `pnpm admin:create` (without `ADMIN_PASSWORD` a random password is printed once). Super admins add admins with `POST /api/v1/admin/users`; the new admin gets a password setup code by email, picks a password at `POST /api/v1/auth/reset-password`. Admins verify vendors, moderate products and manage customers and vendors; only super admins manage other admins.

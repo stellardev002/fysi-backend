@@ -219,12 +219,16 @@ export class EnvVars {
   })
   DATA_ENCRYPTION_KEY: string;
 
-  /** Roles that must turn on two-factor sign-in before using the API (PRD: vendors and admins). */
+  /**
+   * Roles that must turn on two-factor sign-in before using the API. Empty
+   * (the default): sign-in is password plus role checks, and 2FA is optional
+   * for anyone who turns it on. Example to require it: `vendor,admin,super_admin`.
+   */
   @Matches(/^((customer|vendor|admin|super_admin)(,(customer|vendor|admin|super_admin))*)?$/, {
     message:
       'MFA_REQUIRED_ROLES must be a comma-separated list of customer, vendor, admin, super_admin',
   })
-  MFA_REQUIRED_ROLES = 'vendor,admin,super_admin';
+  MFA_REQUIRED_ROLES = '';
 
   /**
    * Admin sessions end after this many minutes without a token refresh
