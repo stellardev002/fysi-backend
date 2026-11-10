@@ -84,45 +84,53 @@ export class EscrowService {
     });
   }
 
-  /**
-   * Admin: cancels a paid vendor order before payout and refunds its full
-   * subtotal (commission included) to the address that paid.
-   */
+  /** Admin: cancels a paid vendor order before payout and refunds the customer. */
   async refundVendorOrder(adminId: string, voId: string, reason: string) {
     await this.database.transaction(async (tx) => {
       const vo = await lockVendorOrder(tx, voId);
       if (!vo) throw new NotFoundException('Vendor order not found');
-      if (!REFUNDABLE.includes(vo.escrowStatus))
-        throw new ConflictException(
-          vo.escrowStatus === 'released' || vo.escrowStatus === 'paid_out'
-            ? 'The vendor was already paid; refund this one by hand'
-            : `Escrow is ${vo.escrowStatus}; nothing to refund`,
-        );
-      if (await liveRefundForVendorOrder(tx, voId))
-        throw new ConflictException('A refund for this order is already on its way');
-      const payer = (await paymentsOfOrder(tx, vo.orderId)).find((p) => p.status !== 'unmatched');
-      if (!payer) throw new ConflictException('No payment found for this order');
-      await insertRefund(tx, {
-        vendorOrderId: vo.id,
-        destination: payer.fromAddress,
-        amountStroops: centsToStroops(vo.subtotalCents),
-        memo: newMemo('RF'),
-        reason,
-        requestedBy: adminId,
-      });
-      await updateVendorOrder(tx, vo.id, {
-        status: 'cancelled',
-        escrowStatus: 'refunded',
-        cancelledAt: new Date(),
-        cancelReason: reason,
-      });
-      await recordAudit(tx, {
-        action: 'vendor_order.refunded',
-        actorId: adminId,
-        resourceType: 'vendor_order',
-        resourceId: vo.id,
-        metadata: { reason, cents: vo.subtotalCents, destination: payer.fromAddress },
-      });
+      await this.refund(tx, vo, adminId, reason, false);
+    });
+  }
+
+  /**
+   * Cancels a paid vendor order before payout and refunds its full subtotal
+   * (commission included) to the address that paid. `restock` puts the items
+   * back on sale (a vendor cancelling before shipping).
+   */
+  async refund(tx: Tx, vo: VendorOrderRow, actorId: string, reason: string, restock: boolean) {
+    if (!REFUNDABLE.includes(vo.escrowStatus))
+      throw new ConflictException(
+        vo.escrowStatus === 'released' || vo.escrowStatus === 'paid_out'
+          ? 'The vendor was already paid; refund this one by hand'
+          : `Escrow is ${vo.escrowStatus}; nothing to refund`,
+      );
+    if (await liveRefundForVendorOrder(tx, vo.id))
+      throw new ConflictException('A refund for this order is already on its way');
+    const payer = (await paymentsOfOrder(tx, vo.orderId)).find((p) => p.status !== 'unmatched');
+    if (!payer) throw new ConflictException('No payment found for this order');
+    await insertRefund(tx, {
+      vendorOrderId: vo.id,
+      destination: payer.fromAddress,
+      amountStroops: centsToStroops(vo.subtotalCents),
+      memo: newMemo('RF'),
+      reason,
+      requestedBy: actorId,
+    });
+    await updateVendorOrder(tx, vo.id, {
+      status: 'cancelled',
+      escrowStatus: 'refunded',
+      cancelledAt: new Date(),
+      cancelReason: reason,
+    });
+    if (restock)
+      for (const line of await linesFor(tx, [vo.id])) await changeStock(tx, line.productId, line.quantity);
+    await recordAudit(tx, {
+      action: 'vendor_order.refunded',
+      actorId,
+      resourceType: 'vendor_order',
+      resourceId: vo.id,
+      metadata: { reason, cents: vo.subtotalCents, destination: payer.fromAddress, restock },
     });
   }
 

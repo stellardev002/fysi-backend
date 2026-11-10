@@ -3,7 +3,9 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { recordAudit } from '../audit/audit.queries.js';
 import { deleteFamiliesForUser, setTotp } from '../auth/auth.queries.js';
@@ -14,6 +16,9 @@ import { isStaff, type Role } from '../database/schema/index.js';
 import { imageUrl } from '../storage/images.js';
 import { ObjectStorage } from '../storage/object-storage.js';
 import { findVendorSummary } from '../vendors/vendors.queries.js';
+import { findWalletFor } from '../wallets/wallets.queries.js';
+import { WalletsService } from '../wallets/wallets.service.js';
+import { anonymiseCustomer, deletionBlockers } from './account-deletion.js';
 import type {
   UserDetailDto,
   UserSummaryDto,
@@ -43,9 +48,12 @@ function assertMayManage(actor: AuthUser, targetId: string, role: Role) {
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     private readonly database: Database,
     private readonly storage: ObjectStorage,
+    private readonly wallets: WalletsService,
   ) {}
 
   async list(query: UsersQueryDto): Promise<Page<UserSummaryDto>> {
@@ -82,6 +90,7 @@ export class UsersService {
       emailVerifiedAt: user.emailVerifiedAt,
       twoFactorEnabled: user.totpEnabledAt !== null,
       suspended: suspension !== undefined,
+      deletedAt: user.deletedAt,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
       lastLoginAt: activity.lastLoginAt,
@@ -176,6 +185,56 @@ export class UsersService {
         metadata: { reason },
       });
     });
+    return this.detail(id);
+  }
+
+  /**
+   * Deletes a customer account at their request (or for abuse): personal data
+   * is erased and the email freed, while orders, payments and reviews stay for
+   * the books, attributed to "Deleted customer". Refused while money is in
+   * flight or a Fysi wallet still holds funds. Audited; cannot be undone.
+   */
+  async deleteCustomer(actor: AuthUser, id: string, reason: string): Promise<UserDetailDto> {
+    const wallet = await findWalletFor(this.database.db, id, 'customer');
+    if (wallet) {
+      const balance = await this.wallets.balance(wallet.publicKey).catch(() => {
+        throw new ServiceUnavailableException('The Stellar network could not be reached to check the wallet. Try again shortly');
+      });
+      if (balance && balance > 0n)
+        throw new ConflictException({
+          message: 'This customer’s Fysi wallet still holds funds',
+          details: ['Ask them to spend or move the balance first'],
+        });
+    }
+    const avatarKey = await this.database.transaction(async (tx) => {
+      const user = await lockUser(tx, id, 'update');
+      if (!user) throw new NotFoundException('User not found');
+      assertMayManage(actor, id, user.role);
+      if (user.role !== 'customer')
+        throw new BadRequestException(
+          user.role === 'vendor'
+            ? 'Vendor accounts are suspended, not deleted: their orders and payouts need the store'
+            : 'Staff accounts cannot be deleted here',
+        );
+      if (user.deletedAt) throw new ConflictException('This account is already deleted');
+      const blockers = await deletionBlockers(tx, id);
+      if (blockers.length > 0)
+        throw new ConflictException({ message: 'This account has orders still in progress', details: blockers });
+      await deleteFamiliesForUser(tx, id);
+      const result = await anonymiseCustomer(tx, user);
+      await recordAudit(tx, {
+        action: 'user.deleted',
+        actorId: actor.id,
+        resourceType: 'user',
+        resourceId: id,
+        metadata: { reason, closedOrders: result.closedOrders, role: user.role },
+      });
+      return result.avatarKey;
+    });
+    if (avatarKey)
+      await this.storage.delete([avatarKey]).catch((err: unknown) =>
+        this.logger.warn({ err, userId: id }, 'Could not delete the profile picture'),
+      );
     return this.detail(id);
   }
 }

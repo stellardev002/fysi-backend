@@ -7,6 +7,7 @@ import {
 import { recordAudit } from '../audit/audit.queries.js';
 import { Database } from '../database/database.js';
 import { lockUser } from '../users/users.queries.js';
+import { salePrice } from '../products/promotion-price.js';
 import { ProductsService } from '../products/products.service.js';
 import {
   findPublicByIds,
@@ -146,7 +147,7 @@ export class CartService {
               ? ('insufficient_stock' as const)
               : null;
         if (!issue) {
-          subtotal += p.priceCents * l.quantity;
+          subtotal += salePrice(p.priceCents, p.discountBps) * l.quantity;
           itemCount += l.quantity;
           vendors.add(p.vendorId);
         }
@@ -154,7 +155,7 @@ export class CartService {
           productId: l.productId,
           quantity: l.quantity,
           product: await this.products.toSummary(p, images.get(p.id) ?? []),
-          lineTotal: this.products.price(p.priceCents * l.quantity),
+          lineTotal: this.products.price(salePrice(p.priceCents, p.discountBps) * l.quantity),
           maxQuantity,
           issue,
         };

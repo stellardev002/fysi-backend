@@ -7,6 +7,7 @@ import {
   vendorOrdersFor,
 } from '../orders/orders.queries.js';
 import { formatCents } from '../products/pricing.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { StellarConfig } from '../stellar/stellar.config.js';
 import { findUserById } from '../users/users.queries.js';
 import { paymentsOfOrder } from './payments.queries.js';
@@ -20,6 +21,7 @@ export class OrderNotifier {
     private readonly database: Database,
     private readonly mail: MailService,
     private readonly stellar: StellarConfig,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async orderPaid(orderId: string): Promise<void> {
@@ -38,6 +40,21 @@ export class OrderNotifier {
           .filter((l) => !voId || l.vendorOrderId === voId)
           .map((l) => `${l.title} × ${l.quantity} — $${formatCents(l.unitPriceCents * l.quantity)}`);
       const last = pays.at(-1);
+      await this.notifications.notifyLater(order.customerId, {
+        kind: 'order.paid',
+        title: `Order ${order.number} is paid`,
+        body: `We received $${formatCents(order.totalCents)} in USDC. Your vendors have been told.`,
+        link: `/account/orders/${order.id}`,
+        data: { orderId: order.id },
+      });
+      for (const { vo } of vos)
+        await this.notifications.notifyLater(vo.vendorId, {
+          kind: 'order.new',
+          title: `New paid order ${order.number}`,
+          body: `$${formatCents(vo.payoutCents)} after commission, held in escrow until delivery.`,
+          link: `/vendor/orders/${vo.id}`,
+          data: { vendorOrderId: vo.id },
+        });
       if (customer && last)
         await this.mail.sendOrderConfirmation(customer.email, {
           number: order.number,

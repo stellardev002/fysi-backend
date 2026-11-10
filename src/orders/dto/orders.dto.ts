@@ -4,6 +4,7 @@ import {
   IsIn,
   IsOptional,
   IsString,
+  IsUUID,
   Matches,
   MaxLength,
   MinLength,
@@ -17,6 +18,7 @@ import {
   trim,
   trimOrNull,
 } from '../../auth/dto/auth.dto.js';
+import { IsCalendarDate } from '../../common/calendar-date.js';
 import { PaginationQueryDto } from '../../common/pagination.js';
 import {
   escrowStatusEnum,
@@ -78,10 +80,22 @@ export class AddressDto {
 }
 
 export class CheckoutDto {
-  @ApiProperty({ type: AddressDto, description: 'Delivery address (PRD C5).' })
+  @ApiPropertyOptional({
+    type: AddressDto,
+    description: 'Delivery address (PRD C5). Send this or `addressId`.',
+  })
+  @ValidateIf((o: CheckoutDto) => o.addressId === undefined)
   @ValidateNested()
   @Type(() => AddressDto)
-  deliveryAddress: AddressDto;
+  deliveryAddress?: AddressDto;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    description: 'A saved address (`GET /addresses`) instead of `deliveryAddress`.',
+  })
+  @ValidateIf((o: CheckoutDto) => o.deliveryAddress === undefined || o.addressId !== undefined)
+  @IsUUID()
+  addressId?: string;
 }
 
 export class PaymentInstructionsDto {
@@ -250,6 +264,42 @@ export class VendorOrdersQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsIn(fulfilmentStatusEnum.enumValues)
   status?: FulfilmentStatus;
+
+  @ApiPropertyOptional({
+    example: 'GIG-4471',
+    description: 'Track Orders search: order number, tracking number, customer name or product title.',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  q?: string;
+
+  @ApiPropertyOptional({ example: '2026-11-01', description: 'Paid on or after this day (UTC).' })
+  @IsOptional()
+  @IsCalendarDate()
+  from?: string;
+
+  @ApiPropertyOptional({ example: '2026-11-30', description: 'Paid on or before this day (UTC).' })
+  @IsOptional()
+  @IsCalendarDate()
+  to?: string;
+
+  @ApiPropertyOptional({
+    enum: ['to_ship', 'in_transit', 'problem'],
+    description: '`to_ship`: paid or processing. `in_transit`: shipped. `problem`: the customer reported one.',
+  })
+  @IsOptional()
+  @IsIn(['to_ship', 'in_transit', 'problem'])
+  view?: 'to_ship' | 'in_transit' | 'problem';
+}
+
+export class VendorCancelDto {
+  @ApiProperty({ example: 'Out of stock: the last one was damaged in the workshop.', minLength: 5, maxLength: 500 })
+  @Transform(trim)
+  @IsString()
+  @MinLength(5)
+  @MaxLength(500)
+  reason: string;
 }
 
 export class VendorOrderDto {
@@ -285,6 +335,11 @@ export class VendorOrderDto {
   @ApiProperty({ nullable: true, type: String, format: 'date-time' }) paidAt: Date | null;
   @ApiProperty({ nullable: true, type: String, format: 'date-time' }) shippedAt: Date | null;
   @ApiProperty({ nullable: true, type: String, format: 'date-time' }) deliveredAt: Date | null;
+
+  @ApiProperty({ description: 'Show "Cancel order": paid or processing, payment in escrow, no problem reported.' })
+  canCancel: boolean;
+
+  @ApiProperty({ nullable: true }) cancelReason: string | null;
 }
 
 export class VendorStatusDto {

@@ -21,6 +21,7 @@ import type { DeliveryAddress } from '../database/schema/index.js';
 import { MailService } from '../mail/mail.service.js';
 import { EscrowService } from '../payments/escrow.service.js';
 import { PaymentWatcher } from '../payments/watcher.service.js';
+import { salePrice } from '../products/promotion-price.js';
 import { ProductsService } from '../products/products.service.js';
 import { fromStroops, toStroops } from '../stellar/amounts.js';
 import { LedgerUnavailableError, StellarLedger } from '../stellar/ledger.js';
@@ -34,6 +35,9 @@ import {
 import { findUserById, lockUser } from '../users/users.queries.js';
 import { findWalletFor, updateWallet } from '../wallets/wallets.queries.js';
 import { WalletsService } from '../wallets/wallets.service.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
+import { StorefrontService } from '../storefront/storefront.service.js';
+import { SupportService } from '../support/support.service.js';
 import type {
   CheckoutDto,
   CustomerVendorOrderDto,
@@ -99,6 +103,9 @@ export class OrdersService {
     private readonly escrow: EscrowService,
     private readonly products: ProductsService,
     private readonly mail: MailService,
+    private readonly storefront: StorefrontService,
+    private readonly support: SupportService,
+    private readonly notifications: NotificationsService,
     config: ConfigService<EnvVars, true>,
   ) {
     this.windowMs = config.get('PAYMENT_WINDOW_MINUTES', { infer: true }) * 60_000;
@@ -118,11 +125,23 @@ export class OrdersService {
    * payment instructions for every method.
    */
   async checkout(user: AuthUser, dto: CheckoutDto): Promise<OrderDto> {
+    if (dto.addressId && dto.deliveryAddress)
+      throw new BadRequestException('Send deliveryAddress or addressId, not both');
+    const deliveryAddress: DeliveryAddress = dto.addressId
+      ? await this.storefront.deliveryAddress(this.database.db, user.id, dto.addressId)
+      : {
+          ...dto.deliveryAddress!,
+          line2: dto.deliveryAddress!.line2 ?? null,
+          notes: dto.deliveryAddress!.notes ?? null,
+        };
     // Fails early (503) when payments are not set up, before stock is held.
     await this.wallets.settlement();
     const orderId = await this.database.transaction(async (tx) => {
       await lockUser(tx, user.id, 'update');
-      const lines = await lockCartForCheckout(tx, user.id);
+      const lines = (await lockCartForCheckout(tx, user.id)).map((l) => ({
+        ...l,
+        listPriceCents: l.priceCents,
+      }));
       if (lines.length === 0) throw new BadRequestException('Your cart is empty');
       const problems = lines
         .filter((l) => !l.visible || l.stock < l.quantity)
@@ -139,6 +158,8 @@ export class OrdersService {
           details: problems,
         });
 
+      // Sale prices are fixed now; a promotion ending later changes nothing.
+      for (const l of lines) l.priceCents = salePrice(l.listPriceCents, l.discountBps);
       const byVendor = new Map<string, typeof lines>();
       for (const l of lines) byVendor.set(l.vendorId, [...(byVendor.get(l.vendorId) ?? []), l]);
       const total = lines.reduce((sum, l) => sum + l.priceCents * l.quantity, 0);
@@ -147,11 +168,7 @@ export class OrdersService {
         number,
         customerId: user.id,
         totalCents: total,
-        deliveryAddress: {
-          ...dto.deliveryAddress,
-          line2: dto.deliveryAddress.line2 ?? null,
-          notes: dto.deliveryAddress.notes ?? null,
-        },
+        deliveryAddress,
         payLinkHash: sha256(this.payLinkToken(number)),
         expiresAt: new Date(Date.now() + this.windowMs),
       });
@@ -172,6 +189,8 @@ export class OrdersService {
             productId: l.productId,
             title: l.title,
             unitPriceCents: l.priceCents,
+            listPriceCents: l.priceCents === l.listPriceCents ? null : l.listPriceCents,
+            promotionId: l.priceCents === l.listPriceCents ? null : l.promotionId,
             quantity: l.quantity,
           })),
         );
@@ -332,7 +351,7 @@ export class OrdersService {
   /** PRD C8 "Report a problem" (7 days after delivery): freezes the payout. */
   async reportProblem(userId: string, id: string, voId: string, reason: string): Promise<OrderDto> {
     const order = await this.owned(userId, id);
-    await this.database.transaction(async (tx) => {
+    const ticket = await this.database.transaction(async (tx) => {
       const vo = await lockVendorOrder(tx, voId);
       if (vo?.orderId !== order.id) throw new NotFoundException('Vendor order not found');
       if (vo.escrowStatus === 'released')
@@ -351,7 +370,28 @@ export class OrdersService {
         resourceId: vo.id,
         metadata: { reason },
       });
+      await this.notifications.notify(tx, vo.vendorId, {
+        kind: 'order.problem',
+        title: `Problem reported on order ${order.number}`,
+        body: `Your payout is on hold while Fysi looks into it: “${reason}”`,
+        link: `/vendor/orders/${vo.id}`,
+        data: { vendorOrderId: vo.id },
+      });
+      // The help desk follows it up with the customer.
+      const customer = (await findUserById(tx, userId))!;
+      return this.support.open(tx, {
+        userId,
+        email: customer.email,
+        name: customer.name,
+        category: 'order',
+        subject: `Problem with order ${order.number}`,
+        message: reason,
+        orderId: order.id,
+        vendorOrderId: vo.id,
+        priority: 'high',
+      });
     });
+    void this.support.afterOpen(ticket);
     return this.get(userId, id);
   }
 
@@ -420,6 +460,50 @@ export class OrdersService {
       if (dto.status === 'shipped') shipped = true;
     });
     if (shipped) void this.sendShipped(id);
+    return this.vendorGet(vendorId, id);
+  }
+
+  /**
+   * Vendor cancels before shipping (out of stock, cannot fulfil): the customer
+   * is refunded in full from escrow and the items go back on sale.
+   */
+  async vendorCancel(vendorId: string, id: string, reason: string): Promise<VendorOrderDto> {
+    const notice = await this.database.transaction(async (tx) => {
+      const current = await findVendorOrderForVendor(tx, vendorId, id);
+      if (!current) throw new NotFoundException('Order not found');
+      const vo = (await lockVendorOrder(tx, id))!;
+      if (vo.status === 'cancelled') throw new ConflictException('This order is already cancelled');
+      if (!['paid', 'processing'].includes(vo.status))
+        throw new ConflictException('Only orders not shipped yet can be cancelled');
+      if (vo.escrowStatus === 'disputed')
+        throw new ConflictException('The customer reported a problem: Fysi support will resolve this order');
+      await this.escrow.refund(tx, vo, vendorId, `Cancelled by the vendor: ${reason}`, true);
+      const order = (await findOrder(tx, vo.orderId))!;
+      const vendorName =
+        (await vendorOrdersFor(tx, [vo.orderId])).find((v) => v.vo.id === id)?.vendorName ?? 'Your vendor';
+      await this.notifications.notify(tx, order.customerId, {
+        kind: 'order.cancelled',
+        title: `${vendorName} cancelled part of order ${order.number}`,
+        body: `$${this.products.price(vo.subtotalCents).usd} is being refunded to the wallet that paid.`,
+        link: `/account/orders/${order.id}`,
+        data: { orderId: order.id, vendorOrderId: vo.id },
+      });
+      return { order, subtotalCents: vo.subtotalCents, vendorName };
+    });
+    void (async () => {
+      try {
+        const customer = await findUserById(this.database.db, notice.order.customerId);
+        if (customer)
+          await this.mail.sendOrderCancelled(customer.email, {
+            number: notice.order.number,
+            vendorName: notice.vendorName,
+            refundUsd: this.products.price(notice.subtotalCents).usd,
+            reason,
+          });
+      } catch (err) {
+        this.logger.error({ err, vendorOrderId: id }, 'Failed to send cancellation email');
+      }
+    })();
     return this.vendorGet(vendorId, id);
   }
 
@@ -592,6 +676,8 @@ export class OrdersService {
       paidAt: r.paidAt,
       shippedAt: vo.shippedAt,
       deliveredAt: vo.deliveredAt,
+      canCancel: ['paid', 'processing'].includes(vo.status) && vo.escrowStatus === 'held',
+      cancelReason: vo.cancelReason,
     };
   }
 
@@ -606,6 +692,14 @@ export class OrdersService {
         vendorOrdersFor(db, [vo.orderId]),
       ]);
       const vendorName = vendorRow.find((v) => v.vo.id === voId)?.vendorName ?? 'Your vendor';
+      if (order)
+        await this.notifications.notify(db, order.customerId, {
+          kind: 'order.shipped',
+          title: `${vendorName} shipped your items`,
+          body: `Order ${order.number} · ${vo.carrier ? `${vo.carrier} ` : ''}${vo.trackingNumber}`,
+          link: `/account/orders/${order.id}`,
+          data: { orderId: order.id, vendorOrderId: voId },
+        });
       if (customer && order)
         await this.mail.sendOrderShipped(customer.email, {
           number: order.number,

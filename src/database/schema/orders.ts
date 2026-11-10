@@ -156,6 +156,9 @@ export const orderLines = pgTable(
     // Snapshot at checkout: later edits to the product do not change the order.
     title: text().notNull(),
     unitPriceCents: bigint({ mode: 'number' }).notNull(),
+    // Price before a vendor promotion; null when none applied.
+    listPriceCents: bigint({ mode: 'number' }),
+    promotionId: uuid(),
     quantity: integer().notNull(),
   },
   (t) => [index('order_lines_vendor_order_idx').on(t.vendorOrderId)],

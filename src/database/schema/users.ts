@@ -32,6 +32,9 @@ export const users = pgTable(
     totpEnabledAt: timestamp({ withTimezone: true }),
     // Last accepted 30-second step, so one code works once.
     totpLastStep: bigint({ mode: 'number' }),
+    // Set when an admin deleted the account: personal data is wiped and the
+    // email freed, while orders and payments keep pointing at the row.
+    deletedAt: timestamp({ withTimezone: true }),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp({ withTimezone: true })
       .notNull()

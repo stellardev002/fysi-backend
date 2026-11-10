@@ -52,6 +52,13 @@ Postgres  Redis          Bucket (S3 API)        all on Railway
 | `wallets` | Custody provider (`custody.ts`), wallet service: sponsored account activation, balances, platform-signed and fee-bumped transfers, settlement setup |
 | `orders` | Checkout (stock hold, per-vendor split, commission), payment methods, customer order actions, vendor fulfilment, pay page; `rules.ts` holds the money rules |
 | `payments` | Payment watcher, escrow, payouts / refunds / withdrawals, scheduler, order emails, customer and vendor wallet views, admin transaction monitor and dashboard |
+| `storefront` | Customer wishlist and saved addresses (checkout takes an `addressId`) |
+| `reviews` | Verified-purchase reviews (one per delivered order line), rating summaries, vendor view, admin hide/unhide |
+| `promotions` | Vendor sales: percent off chosen products or the whole store between two dates. `products/promotion-price.ts` applies the biggest running discount in the catalogue, cart and checkout; order lines keep the list price and promotion id |
+| `notifications` | In-app inbox for every role (global module: orders, payments, vendors and support write to it) and admin announcements |
+| `support` | Help desk: Report a Problem form (signed in or guest), order problem reports open a high-priority ticket, threaded replies, admin queue, assignment and emails |
+| `marketing` | Newsletter (subscribe, HMAC unsubscribe links, account setting) and admin email campaigns sent in batches by their own sweeper under an advisory lock |
+| `analytics` | Vendor dashboard, sales analytics, product stats (views counted per day on product pages), account statements; marketplace analytics; CSV exports (`common/csv.ts` guards against formula injection) |
 | `rate-limit`, `redis`, `health` | Token bucket, Redis client, `/health` |
 
 ## Identity and sessions
@@ -108,3 +115,10 @@ cart ──checkout──► order awaiting_payment ──USDC + memo──► p
                     └─expired / cancelled (stock back)            │                └─problem─► disputed ─admin─► released | refunded
                                                                    └─ one vendor order per store in the cart
 ```
+
+- A vendor can cancel a vendor order before shipping (`paid` or `processing`, escrow `held`): the subtotal is refunded to the paying address, stock goes back and the customer is emailed. After shipping, or once a problem is reported, only an admin can refund.
+- Reporting a problem also opens a help desk ticket linked to the vendor order.
+
+## Deleting a customer
+
+`DELETE /admin/users/{id}` anonymises rather than removes the row, because orders and payments reference it: name, email (freed for a new sign-up), phone, photo, password, 2FA, sessions, cart, wishlist, addresses, inbox and newsletter entry are erased; orders, payments and reviews stay ("Deleted customer" / "Fysi customer"). It is refused while an order is partly paid or has payment in escrow, or while the customer's Fysi wallet holds funds. Vendors are suspended, never deleted.

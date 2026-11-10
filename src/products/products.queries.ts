@@ -21,6 +21,7 @@ import {
   type ProductStatus,
   vendors,
 } from '../database/schema/index.js';
+import { PROMO } from './promotion-price.js';
 import { publiclyVisible } from './visibility.js';
 
 export type ProductRow = typeof products.$inferSelect;
@@ -272,7 +273,7 @@ export const listPublic = async (
           : [];
   const [rows, [{ total }]] = await Promise.all([
     db
-      .select({ ...PRODUCT, ...CATEGORY, ...VENDOR })
+      .select({ ...PRODUCT, ...CATEGORY, ...VENDOR, ...PROMO })
       .from(products)
       .innerJoin(categories, eq(categories.id, products.categoryId))
       .innerJoin(vendors, eq(vendors.userId, products.vendorId))
@@ -293,7 +294,7 @@ export const listPublic = async (
 export const findPublicBySlug = async (db: Executor, slug: string) =>
   (
     await db
-      .select({ ...PRODUCT, ...CATEGORY, ...VENDOR })
+      .select({ ...PRODUCT, ...CATEGORY, ...VENDOR, ...PROMO })
       .from(products)
       .innerJoin(categories, eq(categories.id, products.categoryId))
       .innerJoin(vendors, eq(vendors.userId, products.vendorId))
@@ -306,7 +307,7 @@ export const findPublicByIds = async (db: Executor, ids: string[]) =>
   ids.length === 0
     ? []
     : db
-        .select({ ...PRODUCT, ...CATEGORY, ...VENDOR })
+        .select({ ...PRODUCT, ...CATEGORY, ...VENDOR, ...PROMO })
         .from(products)
         .innerJoin(categories, eq(categories.id, products.categoryId))
         .innerJoin(vendors, eq(vendors.userId, products.vendorId))

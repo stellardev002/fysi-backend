@@ -337,7 +337,20 @@ export class ProductSummaryDto {
   @ApiProperty({ format: 'uuid' }) id: string;
   @ApiProperty({ example: 'organic-cotton-tote-bag-k3x9qa' }) slug: string;
   @ApiProperty({ example: 'Organic cotton tote bag' }) title: string;
-  @ApiProperty({ type: PriceDto }) price: PriceDto;
+
+  @ApiProperty({ type: PriceDto, description: 'What the customer pays now, after any vendor promotion.' })
+  price: PriceDto;
+
+  @ApiProperty({
+    type: PriceDto,
+    nullable: true,
+    description: 'The price before the promotion (strike it through); null when not on sale.',
+  })
+  originalPrice: PriceDto | null;
+
+  @ApiProperty({ nullable: true, example: 15, description: 'Percent off while on sale.' })
+  discountPercent: number | null;
+
   @ApiProperty() inStock: boolean;
 
   @ApiProperty({ nullable: true, description: 'Cover image link (expires).' })
@@ -362,6 +375,12 @@ export class ProductDetailDto extends ProductSummaryDto {
   stock: number;
 
   @ApiProperty({ type: [ProductImageDto] }) images: ProductImageDto[];
+
+  @ApiProperty({
+    example: { average: 4.6, count: 23 },
+    description: 'Verified-purchase reviews; `average` is null without any.',
+  })
+  rating: { average: number | null; count: number };
 
   @ApiProperty({ type: ProductVendorDetailDto })
   declare vendor: ProductVendorDetailDto;
@@ -416,4 +435,10 @@ export class ModerationReasonDto {
   @MinLength(3)
   @MaxLength(1000)
   reason: string;
+}
+
+export class AdminCreateProductDto extends CreateProductDto {
+  @ApiProperty({ format: 'uuid', description: 'The verified store to list it under (its user id).' })
+  @IsUUID()
+  vendorId: string;
 }

@@ -15,6 +15,13 @@
       "when": 1794222673889,
       "tag": "0001_hardening_and_seed",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794303584787,
+      "tag": "0002_engagement",
+      "breakpoints": true
     }
   ]
 }

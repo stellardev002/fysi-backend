@@ -19,6 +19,7 @@ import {
 } from '../database/schema/index.js';
 import { MailService } from '../mail/mail.service.js';
 import { findWalletFor } from '../wallets/wallets.queries.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { WalletsService } from '../wallets/wallets.service.js';
 import {
   checkDocument,
@@ -95,6 +96,7 @@ export class VendorsService {
     private readonly box: SecretBox,
     private readonly mail: MailService,
     private readonly wallets: WalletsService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /* ---------------- vendor self-service ---------------- */
@@ -285,6 +287,13 @@ export class VendorsService {
         resourceId: user.id,
         before: { status: vendor.status },
         after: { status: 'pending' },
+      });
+      await this.notifications.notifyStaff(tx, {
+        kind: 'vendor.submitted',
+        title: `${vendor.businessName ?? 'A vendor'} is waiting for verification`,
+        body: vendor.submissionCount > 0 ? 'Resubmitted after changes.' : 'New application.',
+        link: `/admin/vendors/${user.id}`,
+        data: { vendorId: user.id },
       });
     });
     return this.profile(user.id);
@@ -529,6 +538,14 @@ export class VendorsService {
     decision: VendorDecision,
     reason: string | null,
   ) {
+    const LABEL = { approve: 'verified', reject: 'not approved yet', suspend: 'suspended', reinstate: 'reinstated' };
+    await this.notifications.notifyLater(vendor.userId, {
+      kind: 'vendor.decision',
+      title: `${vendor.businessName ?? 'Your store'} is ${LABEL[decision]}`,
+      body: reason ?? (decision === 'approve' ? 'You can now list products.' : 'See your vendor dashboard.'),
+      link: '/vendor/profile',
+      data: { decision },
+    });
     try {
       const owner = await findUserById(this.database.db, vendor.userId);
       if (owner)

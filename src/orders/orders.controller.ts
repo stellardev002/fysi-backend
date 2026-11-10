@@ -27,6 +27,7 @@ import {
   ProblemDto,
   VendorOrderDto,
   VendorOrdersQueryDto,
+  VendorCancelDto,
   VendorStatusDto,
   WalletPayDto,
 } from './dto/orders.dto.js';
@@ -276,7 +277,7 @@ export class VendorOrdersController {
   @ApiRoute({
     summary: 'My orders',
     path: '/api/v1/vendor/orders',
-    description: 'PRD V8: paid orders with status, payout breakdown and escrow state. Unpaid checkouts are not listed.',
+    description: 'PRD V8 and Track Orders: paid orders with status, payout breakdown and escrow state, newest payment first. Search by order or tracking number, customer or product (`q`); filter by status, view (`to_ship`, `in_transit`, `problem`) or payment date. Unpaid checkouts are not listed.',
     message: 'Orders retrieved',
     model: VendorOrderDto,
     paginated: true,
@@ -305,7 +306,7 @@ export class VendorOrdersController {
     path: '/api/v1/vendor/orders/{id}/status',
     description: `PRD V8: \`processing\` → \`shipped\` (tracking number required; the customer is emailed) → \`delivered\`.
 
-Shipping starts the 7-day timer after which escrow releases automatically. Marking delivered does not release payment by itself: the customer's confirmation or the timer does. To cancel a paid order, contact Fysi: an admin refunds the customer.`,
+Shipping starts the 7-day timer after which escrow releases automatically. Marking delivered does not release payment by itself: the customer's confirmation or the timer does. To cancel before shipping, use \`POST /vendor/orders/{id}/cancel\`.`,
     message: 'Order updated',
     model: VendorOrderDto,
     errors: [HttpStatus.BAD_REQUEST, HttpStatus.UNAUTHORIZED, HttpStatus.FORBIDDEN, NOT_FOUND, HttpStatus.CONFLICT],
@@ -317,5 +318,31 @@ Shipping starts the 7-day timer after which escrow releases automatically. Marki
     @Body() dto: VendorStatusDto,
   ): Promise<VendorOrderDto> {
     return this.orders.vendorUpdate(user.id, id, dto);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @ApiRoute({
+    summary: 'Cancel an order',
+    path: '/api/v1/vendor/orders/{id}/cancel',
+    description: `Before shipping only (\`paid\` or \`processing\`), e.g. when an item is out of stock or damaged. The customer is refunded the full amount from escrow in USDC and emailed your reason; the items go back in stock. There is no payout for it.
+
+Not possible once shipped, or after the customer reported a problem (Fysi support resolves those).`,
+    message: 'Order cancelled. The customer is being refunded',
+    model: VendorOrderDto,
+    errors: [
+      HttpStatus.BAD_REQUEST,
+      HttpStatus.UNAUTHORIZED,
+      HttpStatus.FORBIDDEN,
+      NOT_FOUND,
+      { status: HttpStatus.CONFLICT, message: 'Only orders not shipped yet can be cancelled' },
+    ],
+  })
+  @Post(':id/cancel')
+  cancel(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: VendorCancelDto,
+  ): Promise<VendorOrderDto> {
+    return this.orders.vendorCancel(user.id, id, dto.reason);
   }
 }

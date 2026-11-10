@@ -29,6 +29,13 @@ import { WalletsModule } from './wallets/wallets.module.js';
 import { SecretBoxModule } from './common/secret-box.module.js';
 import { ProductsModule } from './products/products.module.js';
 import { VendorsModule } from './vendors/vendors.module.js';
+import { AnalyticsModule } from './analytics/analytics.module.js';
+import { MarketingModule } from './marketing/marketing.module.js';
+import { NotificationsModule } from './notifications/notifications.module.js';
+import { PromotionsModule } from './promotions/promotions.module.js';
+import { ReviewsModule } from './reviews/reviews.module.js';
+import { StorefrontModule } from './storefront/storefront.module.js';
+import { SupportModule } from './support/support.module.js';
 
 const isInstalled = (pkg: string): boolean => {
   try {
@@ -113,6 +120,7 @@ const isInstalled = (pkg: string): boolean => {
     MailModule,
     StorageModule,
     RateLimitModule,
+    NotificationsModule,
     AuthModule,
     AuthorizationModule,
     AuditModule,
@@ -125,6 +133,12 @@ const isInstalled = (pkg: string): boolean => {
     WalletsModule,
     PaymentsModule,
     OrdersModule,
+    StorefrontModule,
+    ReviewsModule,
+    PromotionsModule,
+    SupportModule,
+    MarketingModule,
+    AnalyticsModule,
     HealthModule,
   ],
   providers: [

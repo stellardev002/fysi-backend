@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray, lte, ne, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, inArray, lt, lte, ne, or, sql } from 'drizzle-orm';
 import type { Executor, Tx } from '../database/database.js';
 import {
   cartItems,
@@ -13,6 +13,7 @@ import {
   vendorOrders,
   vendors,
 } from '../database/schema/index.js';
+import { PROMO } from '../products/promotion-price.js';
 import { publiclyVisible } from '../products/visibility.js';
 
 export type OrderRow = typeof orders.$inferSelect;
@@ -33,6 +34,7 @@ export const lockCartForCheckout = (tx: Tx, userId: string) =>
       foundingVendor: vendors.foundingVendor,
       approvedAt: vendors.approvedAt,
       visible: sql<boolean>`${publiclyVisible()}`,
+      ...PROMO,
     })
     .from(cartItems)
     .innerJoin(products, eq(products.id, cartItems.productId))
@@ -144,18 +146,47 @@ export const setVendorOrdersOf = (
 ) => tx.update(vendorOrders).set(values).where(eq(vendorOrders.orderId, orderId));
 
 /** Vendor's orders once paid (unpaid checkouts are not the vendor's business yet). */
-export const listVendorOrders = async (
-  db: Executor,
-  vendorId: string,
-  filter: { status?: FulfilmentStatus },
-  page: { limit: number; offset: number },
-) => {
-  const where = and(
+export interface VendorOrderFilter {
+  status?: FulfilmentStatus;
+  q?: string;
+  from?: string;
+  to?: string;
+  view?: 'to_ship' | 'in_transit' | 'problem';
+}
+
+const escapeLike = (s: string) => s.replace(/[\\%_]/g, '\\$&');
+
+export const vendorOrderWhere = (vendorId: string, f: VendorOrderFilter) => {
+  const term = f.q?.trim();
+  const like = term ? `%${escapeLike(term)}%` : undefined;
+  return and(
     eq(vendorOrders.vendorId, vendorId),
     ne(vendorOrders.status, 'awaiting_payment'),
     ne(vendorOrders.escrowStatus, 'void'),
-    filter.status ? eq(vendorOrders.status, filter.status) : undefined,
+    f.status ? eq(vendorOrders.status, f.status) : undefined,
+    f.view === 'to_ship' ? inArray(vendorOrders.status, ['paid', 'processing']) : undefined,
+    f.view === 'in_transit' ? eq(vendorOrders.status, 'shipped') : undefined,
+    f.view === 'problem' ? eq(vendorOrders.escrowStatus, 'disputed') : undefined,
+    f.from ? gte(orders.paidAt, new Date(`${f.from}T00:00:00Z`)) : undefined,
+    f.to ? lt(orders.paidAt, new Date(new Date(`${f.to}T00:00:00Z`).getTime() + 86_400_000)) : undefined,
+    like
+      ? or(
+          eq(orders.number, term!.toUpperCase()),
+          sql`${vendorOrders.trackingNumber} ilike ${like}`,
+          sql`${users.name} ilike ${like}`,
+          sql`exists (select 1 from ${orderLines} where ${orderLines.vendorOrderId} = ${vendorOrders.id} and ${orderLines.title} ilike ${like})`,
+        )
+      : undefined,
   );
+};
+
+export const listVendorOrders = async (
+  db: Executor,
+  vendorId: string,
+  filter: VendorOrderFilter,
+  page: { limit: number; offset: number },
+) => {
+  const where = vendorOrderWhere(vendorId, filter);
   const [rows, [{ total }]] = await Promise.all([
     db
       .select({
@@ -172,7 +203,12 @@ export const listVendorOrders = async (
       .orderBy(desc(orders.paidAt), desc(vendorOrders.id))
       .limit(page.limit)
       .offset(page.offset),
-    db.select({ total: count() }).from(vendorOrders).where(where),
+    db
+      .select({ total: count() })
+      .from(vendorOrders)
+      .innerJoin(orders, eq(orders.id, vendorOrders.orderId))
+      .innerJoin(users, eq(users.id, orders.customerId))
+      .where(where),
   ]);
   return { rows, total };
 };

@@ -104,6 +104,14 @@ export class UserDetailDto extends UserSummaryDto {
   @ApiProperty({ nullable: true, type: String, format: 'date-time' })
   emailVerifiedAt: Date | null;
 
+  @ApiProperty({
+    nullable: true,
+    type: String,
+    format: 'date-time',
+    description: 'Set when the account was deleted: personal data is gone.',
+  })
+  deletedAt: Date | null;
+
   @ApiProperty({ description: 'Last change to the name or profile picture.' })
   updatedAt: Date;
 
@@ -198,6 +206,20 @@ export class SuspendUserDto {
 export class ResetTwoFactorDto {
   @ApiProperty({
     example: 'Lost phone; identity confirmed on a call',
+    minLength: 3,
+    maxLength: 500,
+    description: 'Kept in the audit log.',
+  })
+  @Transform(trim)
+  @IsString()
+  @MinLength(3)
+  @MaxLength(500)
+  reason: string;
+}
+
+export class DeleteUserDto {
+  @ApiProperty({
+    example: 'Customer asked for their account to be deleted (email of 9 Nov).',
     minLength: 3,
     maxLength: 500,
     description: 'Kept in the audit log.',

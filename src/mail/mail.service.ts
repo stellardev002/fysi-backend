@@ -252,6 +252,108 @@ export class MailService {
     });
   }
 
+  /** Help desk: the request was received. */
+  sendTicketReceived(to: string, t: { number: string; subject: string }): Promise<void> {
+    return this.send(to, {
+      subject: `Fysi support: we received your request ${t.number}`,
+      preheader: `Request ${t.number}: ${t.subject}`,
+      heading: 'We received your request',
+      status: { label: 'Open', tone: 'brand' },
+      paragraphs: [
+        `Thanks for getting in touch. Your request number is ${t.number}; the Fysi team usually replies within one working day.`,
+      ],
+      quote: { label: 'Subject', text: t.subject },
+      button: this.siteButton('View your request', '/account/support'),
+      footnote: 'You are receiving this because you contacted Fysi support.',
+    });
+  }
+
+  /** Help desk: the team replied. */
+  sendTicketReply(
+    to: string,
+    t: { number: string; subject: string; reply: string; resolved: boolean },
+  ): Promise<void> {
+    return this.send(to, {
+      subject: `Fysi support replied: ${t.subject} [${t.number}]`,
+      preheader: t.reply.slice(0, 120),
+      heading: t.resolved ? 'Your request is resolved' : 'Fysi support replied',
+      status: t.resolved ? { label: 'Resolved', tone: 'success' } : { label: 'Reply', tone: 'brand' },
+      paragraphs: [`About request ${t.number}: ${t.subject}`],
+      quote: { label: 'Fysi Support', text: t.reply },
+      button: this.siteButton('Reply', '/account/support'),
+      after: t.resolved ? ['Reply if something is still wrong and we will reopen it.'] : [],
+      footnote: 'You are receiving this because you contacted Fysi support.',
+    });
+  }
+
+  /** Vendor cancelled before shipping: the customer gets their money back. */
+  sendOrderCancelled(
+    to: string,
+    o: { number: string; vendorName: string; refundUsd: string; reason: string },
+  ): Promise<void> {
+    return this.send(to, {
+      subject: `Fysi: ${o.vendorName} cancelled part of order ${o.number}`,
+      preheader: `$${o.refundUsd} is on its way back to you in USDC.`,
+      heading: 'Part of your order was cancelled',
+      status: { label: 'Refunding', tone: 'warning' },
+      paragraphs: [
+        `${o.vendorName} could not fulfil their items in order ${o.number}.`,
+        `We are refunding $${o.refundUsd} in USDC to the wallet that paid. It usually arrives within minutes.`,
+      ],
+      quote: { label: 'Reason', text: o.reason },
+      button: this.siteButton('View your order', '/account/orders'),
+      footnote: 'You are receiving this because you placed an order on Fysi.',
+    });
+  }
+
+  sendNewsletterWelcome(to: string, unsubscribeUrl: string): Promise<void> {
+    return this.send(to, {
+      subject: 'Welcome to the Fysi newsletter',
+      preheader: 'New certified eco-friendly products, vendor stories and offers.',
+      heading: 'You are on the list',
+      status: { label: 'Subscribed', tone: 'success' },
+      paragraphs: [
+        'Thanks for subscribing. We will send new certified eco-friendly products, stories from our vendors and the occasional offer: a few emails a month at most.',
+      ],
+      button: this.siteButton('Shop Fysi', '/'),
+      after: [`Changed your mind? Unsubscribe: ${unsubscribeUrl}`],
+      footnote: 'You are receiving this because this address subscribed to the Fysi newsletter.',
+    });
+  }
+
+  /** An admin campaign; every one carries an unsubscribe link. */
+  sendCampaign(
+    to: string,
+    c: {
+      subject: string;
+      preheader: string | null;
+      heading: string;
+      body: string;
+      ctaLabel: string | null;
+      ctaUrl: string | null;
+    },
+    unsubscribeUrl: string,
+  ): Promise<void> {
+    return this.send(to, {
+      subject: c.subject,
+      preheader: c.preheader ?? c.body.slice(0, 120),
+      heading: c.heading,
+      paragraphs: c.body
+        .split(/\r?\n\s*\r?\n/)
+        .map((p) => p.trim())
+        .filter(Boolean),
+      button: c.ctaLabel && c.ctaUrl ? { label: c.ctaLabel, url: c.ctaUrl } : undefined,
+      after: [`Unsubscribe from Fysi marketing emails: ${unsubscribeUrl}`],
+      footnote:
+        'You are receiving this because you have a Fysi account or subscribed to the Fysi newsletter.',
+    });
+  }
+
+  /** An absolute link on the frontend. */
+  siteLink(path: string): string {
+    return `${this.brand.siteUrl}${path}`;
+  }
+
   private siteButton(label: string, path: string) {
     return this.brand.siteUrl ? { label, url: `${this.brand.siteUrl}${path}` } : undefined;
   }

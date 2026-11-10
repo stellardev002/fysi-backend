@@ -26,6 +26,7 @@ import {
   UserDetailDto,
   UserSummaryDto,
   UsersQueryDto,
+  DeleteUserDto,
 } from './dto/users.dto.js';
 import { UsersService } from './users.service.js';
 
@@ -228,5 +229,41 @@ export class AdminUsersController {
     @Body() dto: ResetTwoFactorDto,
   ): Promise<UserDetailDto> {
     return this.users.resetTwoFactor(actor, id, dto.reason);
+  }
+
+  @ApiRoute({
+    summary: 'Delete a customer account',
+    path: '/api/v1/admin/users/{id}',
+    description: `For a customer who asked to be deleted, or for abuse. Cannot be undone.
+
+- Erased: name, email (free to sign up again), phone, photo, password, 2FA, sessions, cart, wishlist, saved addresses, inbox, newsletter entry. Unpaid checkouts are cancelled and their stock returned.
+- Kept for the books: orders, payments and reviews, shown as "Deleted customer"; the audit log records who did it and why.
+- Refused while an order is partly paid or has payment in escrow, or while the customer's Fysi wallet holds funds (\`error.details\` says which).
+- Customers only: vendors are suspended instead.`,
+    message: 'Account deleted',
+    model: UserDetailDto,
+    errors: [
+      {
+        status: HttpStatus.BAD_REQUEST,
+        message: 'Vendor accounts are suspended, not deleted: their orders and payouts need the store',
+        description: 'Missing reason, not a customer, or your own account.',
+      },
+      ...ADMIN_ERRORS,
+      NOT_FOUND,
+      {
+        status: HttpStatus.CONFLICT,
+        message: 'This account has orders still in progress',
+        details: ['1 order(s) with payment in escrow: wait for delivery, release or refund'],
+      },
+      HttpStatus.SERVICE_UNAVAILABLE,
+    ],
+  })
+  @Delete(':id')
+  remove(
+    @CurrentUser() actor: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: DeleteUserDto,
+  ): Promise<UserDetailDto> {
+    return this.users.deleteCustomer(actor, id, dto.reason);
   }
 }

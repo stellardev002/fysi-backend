@@ -6,7 +6,10 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { v7 } from 'uuid';
+import { products, productViews } from '../database/schema/index.js';
+import { ratingOf } from '../reviews/reviews.queries.js';
 import { recordAudit } from '../audit/audit.queries.js';
 import type { AuthUser } from '../auth/auth-user.js';
 import { findCategory } from '../categories/categories.queries.js';
@@ -34,6 +37,7 @@ import {
   type VendorProductsQueryDto,
 } from './dto/products.dto.js';
 import { formatCents } from './pricing.js';
+import { salePrice } from './promotion-price.js';
 import {
   deleteImage,
   findOwnedProduct,
@@ -100,13 +104,14 @@ export class ProductsService {
     return (await this.toVendorDtos([row]))[0];
   }
 
-  async create(user: AuthUser, dto: CreateProductDto): Promise<VendorProductDto> {
+  /** `vendorId`: whose store; an admin can add a product for a vendor (audited as the admin). */
+  async create(user: AuthUser, dto: CreateProductDto, vendorId = user.id): Promise<VendorProductDto> {
     await this.assertActiveCategory(dto.categoryId);
     const id = await this.database.transaction(async (tx) => {
-      const vendor = await this.sellingVendor(tx, user.id);
+      const vendor = await this.sellingVendor(tx, vendorId);
       this.assertCertifications(dto.certifications ?? [], vendor.verifiedCertifications);
       const product = await insertProduct(tx, {
-        vendorId: user.id,
+        vendorId,
         categoryId: dto.categoryId,
         title: dto.title,
         slug: `${slugify(dto.title, 'product')}-${slugSuffix()}`,
@@ -125,13 +130,14 @@ export class ProductsService {
       });
       return product.id;
     });
-    return this.vendorGet(user.id, id);
+    return this.vendorGet(vendorId, id);
   }
 
   async update(
     user: AuthUser,
     id: string,
     dto: UpdateProductDto,
+    vendorId = user.id,
   ): Promise<VendorProductDto> {
     const changes = Object.fromEntries(
       Object.entries(dto).filter(([, v]) => v !== undefined),
@@ -140,8 +146,8 @@ export class ProductsService {
       throw new BadRequestException('No fields to update');
     if (changes.categoryId) await this.assertActiveCategory(changes.categoryId);
     await this.database.transaction(async (tx) => {
-      const vendor = await this.sellingVendor(tx, user.id);
-      const product = await this.owned(tx, user.id, id);
+      const vendor = await this.sellingVendor(tx, vendorId);
+      const product = await this.owned(tx, vendorId, id);
       if (product.moderationStatus === 'removed')
         throw new ConflictException('An admin removed this product; it cannot be edited');
       if (changes.certifications) {
@@ -158,7 +164,7 @@ export class ProductsService {
         after: pick(updated, Object.keys(changes)),
       });
     });
-    return this.vendorGet(user.id, id);
+    return this.vendorGet(vendorId, id);
   }
 
   /** Soft delete: the product disappears for everyone but stays for order history. */
@@ -179,14 +185,15 @@ export class ProductsService {
     user: AuthUser,
     id: string,
     file: UploadedImage | undefined,
+    vendorId = user.id,
   ): Promise<VendorProductDto> {
     const type = checkImage(file, 'image', 'product photo');
     const key = `products/${id}/${v7()}.${type.ext}`;
     await this.storage.put(key, file!.buffer, type.mime);
     try {
       await this.database.transaction(async (tx) => {
-        await this.sellingVendor(tx, user.id);
-        await this.owned(tx, user.id, id);
+        await this.sellingVendor(tx, vendorId);
+        await this.owned(tx, vendorId, id);
         const stats = await imageStats(tx, id);
         if (stats.n >= MAX_IMAGES)
           throw new ConflictException(`At most ${MAX_IMAGES} photos per product`);
@@ -206,16 +213,17 @@ export class ProductsService {
       await this.deleteObjects([key]);
       throw err;
     }
-    return this.vendorGet(user.id, id);
+    return this.vendorGet(vendorId, id);
   }
 
   async removeImage(
     user: AuthUser,
     id: string,
     imageId: string,
+    vendorId = user.id,
   ): Promise<VendorProductDto> {
     const removed = await this.database.transaction(async (tx) => {
-      await this.owned(tx, user.id, id);
+      await this.owned(tx, vendorId, id);
       const image = await deleteImage(tx, id, imageId);
       if (!image) throw new NotFoundException('Image not found');
       await recordAudit(tx, {
@@ -227,7 +235,7 @@ export class ProductsService {
       return image;
     });
     await this.deleteObjects([removed.storageKey]);
-    return this.vendorGet(user.id, id);
+    return this.vendorGet(vendorId, id);
   }
 
   async reorderImages(
@@ -279,7 +287,11 @@ export class ProductsService {
   async productPage(slug: string): Promise<ProductDetailDto> {
     const row = await findPublicBySlug(this.database.db, slug);
     if (!row) throw new NotFoundException('Product not found');
-    const images = await imagesFor(this.database.db, [row.id]);
+    void this.countView(row.id);
+    const [images, rating] = await Promise.all([
+      imagesFor(this.database.db, [row.id]),
+      ratingOf(this.database.db, row.id),
+    ]);
     const list = images.get(row.id) ?? [];
     const summary = await this.toSummary(row, list);
     return {
@@ -287,6 +299,7 @@ export class ProductsService {
       description: row.description,
       stock: row.stock,
       images: await this.toImages(list),
+      rating: { average: rating.average, count: rating.count },
       vendor: {
         ...summary.vendor,
         logoUrl: await imageUrl(this.storage, row.vendorLogoKey),
@@ -318,6 +331,21 @@ export class ProductsService {
     };
   }
 
+  /** One more view today, for vendor product stats. Never fails the page. */
+  private async countView(productId: string) {
+    try {
+      await this.database.db
+        .insert(productViews)
+        .values({ productId, day: new Date().toISOString().slice(0, 10), views: 1 })
+        .onConflictDoUpdate({
+          target: [productViews.productId, productViews.day],
+          set: { views: sql`${productViews.views} + 1` },
+        });
+    } catch (err) {
+      this.logger.warn({ err, productId }, 'Could not count a product view');
+    }
+  }
+
   /* ---------------- admin ---------------- */
 
   async adminList(
@@ -338,6 +366,25 @@ export class ProductsService {
       total,
       query,
     );
+  }
+
+  /** The store a product belongs to, for admin edits. */
+  async vendorOf(id: string): Promise<string> {
+    const [row] = await this.database.db
+      .select({ vendorId: products.vendorId })
+      .from(products)
+      .where(and(eq(products.id, id), isNull(products.deletedAt)))
+      .limit(1);
+    if (!row) throw new NotFoundException('Product not found');
+    return row.vendorId;
+  }
+
+  async adminGet(id: string): Promise<AdminProductDto> {
+    const page = await this.adminList(
+      Object.assign(new AdminProductsQueryDto(), { productId: id, includeDeleted: true }),
+    );
+    if (!page.result[0]) throw new NotFoundException('Product not found');
+    return page.result[0];
   }
 
   /** hide | unhide | remove (PRD A5). `removed` is final. */
@@ -383,14 +430,17 @@ export class ProductsService {
   /* ---------------- mapping ---------------- */
 
   async toSummary(
-    r: Product & CategoryCols & VendorCols,
+    r: Product & CategoryCols & VendorCols & { discountBps?: number },
     images: ProductImageRow[],
   ): Promise<ProductSummaryDto> {
+    const sale = salePrice(r.priceCents, r.discountBps);
     return {
       id: r.id,
       slug: r.slug,
       title: r.title,
-      price: this.price(r.priceCents),
+      price: this.price(sale),
+      originalPrice: sale === r.priceCents ? null : this.price(r.priceCents),
+      discountPercent: sale === r.priceCents ? null : (r.discountBps ?? 0) / 100,
       inStock: r.stock > 0,
       imageUrl: images[0] ? await imageUrl(this.storage, images[0].storageKey) : null,
       badge: badgeFor(r.certifications),
